@@ -11,6 +11,7 @@ module Physics.Hurl
 , MonadSpace
 , stepSpace
 , damping
+, gravity
 
 -- * Objects
 , Mass
