@@ -74,8 +74,10 @@ data Shape
 mkShapeType :: Shape -> H.ShapeType
 mkShapeType s = case s of
     Circle r -> H.Circle r
-    Rect w h -> H.Polygon $ H.Vector <$> ends w <*> ends h
-      where ends i = [-i/2, i/2]
+    Rect w h -> H.Polygon $ map (uncurry H.Vector)
+                    [(-x, -y), (x, -y), (x, y), (-x, y)]
+      where x = w/2
+            y = h/2
 
 
 data Object = Object
