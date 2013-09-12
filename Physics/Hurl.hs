@@ -18,7 +18,7 @@ module Physics.Hurl
 , Object (..)
 , createObject
 , destroyObject
-, Shape
+, Shape (..)
 , position
 , angle
 , velocity
