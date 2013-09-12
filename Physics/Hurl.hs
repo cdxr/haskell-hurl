@@ -29,6 +29,9 @@ module Physics.Hurl
 , getVar
 , ( $= )
 , ( $=! )
+
+-- * Re-exports
+, liftIO
 )
 
 where
