@@ -24,6 +24,11 @@ module Physics.Hurl
 , angle
 , velocity
 , applyForce
+
+-- * StateVar
+, getVar
+, ( $= )
+, ( $=! )
 )
 
 where
@@ -40,6 +45,11 @@ import Data.StateVar ( StateVar, ($=), ($=!), makeStateVar )
 import qualified Data.StateVar as StateVar
 
 import qualified Physics.Hipmunk as H
+
+
+-- | A synonym for Data.StateVar.get
+getVar :: StateVar a -> IO a
+getVar = StateVar.get
 
 
 withPhysics :: IO a -> IO a
@@ -124,14 +134,14 @@ angle = mapStateVar realToFrac realToFrac . H.angle . objBody
 
 applyForce :: V2 Double -> Object -> IO ()
 applyForce v o = H.applyOnlyForce b (vectorFromV2 v)
-             =<< StateVar.get (H.position b)
+             =<< getVar (H.position b)
   where
     b = objBody o
 
 
 
 mapStateVar :: (a -> b) -> (b -> a) -> StateVar a -> StateVar b
-mapStateVar f g v = makeStateVar (f <$> StateVar.get v) ((v $=) . g)
+mapStateVar f g v = makeStateVar (f <$> getVar v) ((v $=) . g)
 
 vectorFromV2 :: V2 Double -> H.Vector
 vectorFromV2 (V2 x y) = H.Vector x y
