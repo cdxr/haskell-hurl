@@ -63,6 +63,14 @@ stepSpace dt = do
     liftIO $ H.step s dt
 
 
+damping :: (MonadSpace m) => m (StateVar Double)
+damping = liftM H.damping ask
+
+
+gravity :: (MonadSpace m) => m (StateVar (V2 Double))
+gravity = liftM (fromVectorVar . H.gravity) ask
+
+
 type Mass = Double
 type Moment = Double
 
@@ -112,9 +120,6 @@ velocity = fromVectorVar . H.velocity . objBody
 
 angle :: Object -> StateVar Double
 angle = mapStateVar realToFrac realToFrac . H.angle . objBody
-
-damping :: (MonadSpace m) => m (StateVar Double)
-damping = liftM H.damping ask
 
 applyForce :: V2 Double -> Object -> IO ()
 applyForce v o = H.applyOnlyForce b (vectorFromV2 v)
