@@ -24,6 +24,7 @@ module Physics.Hurl
 , angle
 , velocity
 , applyForce
+, setFriction
 
 -- * Walls
 , createWall
@@ -110,18 +111,20 @@ data Object = Object
     , objShapes :: [H.Shape]
     }
 
-createObject' :: (MonadSpace m) => Mass -> Moment -> H.ShapeType -> m Object
-createObject' bmass bmoment shape = do
+createSimpleBody :: (MonadSpace m) => Mass -> Moment -> H.ShapeType -> m (H.Body, H.Shape)
+createSimpleBody bmass bmoment shape = do
     space <- ask
     liftIO $ do
         body <- H.newBody bmass bmoment
         hshape <- H.newShape body shape $ H.Vector 0 0
         H.spaceAdd space body
         H.spaceAdd space hshape
-        return $ Object body [hshape]
+        return (body, hshape)
 
 createObject :: (MonadSpace m) => Mass -> Moment -> Shape -> m Object
-createObject bmass bmoment = createObject' bmass bmoment . mkShapeType
+createObject bmass bmoment shape = do
+    (b, s) <- createSimpleBody bmass bmoment $ mkShapeType shape
+    return $ Object b [s]
 
 destroyObject :: (MonadSpace m) => Object -> m ()
 destroyObject (Object body shapes) = do
@@ -141,6 +144,11 @@ velocity = fromVectorVar . H.velocity . objBody
 angle :: Object -> StateVar Double
 angle = mapStateVar realToFrac realToFrac . H.angle . objBody
 
+setFriction :: Double -> Object -> IO ()
+setFriction friction (Object _ ss) =
+    forM_ ss $ \s -> H.friction s $= friction
+
+
 applyForce :: V2 Double -> Object -> IO ()
 applyForce v o = H.applyOnlyForce b (vectorFromV2 v)
              =<< getVar (H.position b)
@@ -150,12 +158,27 @@ applyForce v o = H.applyOnlyForce b (vectorFromV2 v)
 
 -- NOTE this is currently very inefficient because it will rehash all
 -- static geometry for every wall added
-createWall :: Double -> V2 Double -> V2 Double -> Space IO ()
-createWall thickness a b = do
-    o <- createObject' H.infinity H.infinity line
-    liftIO . H.rehashStatic =<< ask
+createWall :: Double -> V2 Double -> V2 Double -> Space IO Object
+createWall thickness p1 p2 = do
+    space <- ask
+    {-
+    liftIO $ do
+        b <- H.newBody H.infinity H.infinity
+        s <- H.newShape b line $ H.Vector 0 0
+        H.spaceAdd space body
+        H.spaceAdd space s
+
+        --H.spaceAdd space (H.Static s)
+        --H.rehashStatic space
+    -}
+    (b,s) <- createSimpleBody H.infinity H.infinity line
+    let o = Object b [s]
+    liftIO $ do
+        position o $= p1
+        H.spaceAdd space (H.Static s)
+    return o
   where
-    line = H.LineSegment (vectorFromV2 a) (vectorFromV2 b) thickness
+    line = H.LineSegment (H.Vector 0 0) (vectorFromV2 $ p2 - p1) thickness
 
 
 
