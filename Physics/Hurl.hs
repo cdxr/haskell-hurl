@@ -25,6 +25,9 @@ module Physics.Hurl
 , velocity
 , applyForce
 
+-- * Walls
+, createWall
+
 -- * StateVar
 , getVar
 , ( $= )
@@ -107,15 +110,18 @@ data Object = Object
     , objShapes :: [H.Shape]
     }
 
-createObject :: (MonadSpace m) => Mass -> Moment -> Shape -> m Object
-createObject bmass bmoment shape = do
+createObject' :: (MonadSpace m) => Mass -> Moment -> H.ShapeType -> m Object
+createObject' bmass bmoment shape = do
     space <- ask
     liftIO $ do
         body <- H.newBody bmass bmoment
-        hshape <- H.newShape body (mkShapeType shape) $ H.Vector 0 0
+        hshape <- H.newShape body shape $ H.Vector 0 0
         H.spaceAdd space body
         H.spaceAdd space hshape
         return $ Object body [hshape]
+
+createObject :: (MonadSpace m) => Mass -> Moment -> Shape -> m Object
+createObject bmass bmoment = createObject' bmass bmoment . mkShapeType
 
 destroyObject :: (MonadSpace m) => Object -> m ()
 destroyObject (Object body shapes) = do
@@ -142,6 +148,16 @@ applyForce v o = H.applyOnlyForce b (vectorFromV2 v)
     b = objBody o
 
 
+-- NOTE this is currently very inefficient because it will rehash all
+-- static geometry for every wall added
+createWall :: Double -> V2 Double -> V2 Double -> Space IO ()
+createWall thickness a b = do
+    o <- createObject' H.infinity H.infinity line
+    liftIO . H.rehashStatic =<< ask
+  where
+    line = H.LineSegment (vectorFromV2 a) (vectorFromV2 b) thickness
+
+
 
 mapStateVar :: (a -> b) -> (b -> a) -> StateVar a -> StateVar b
 mapStateVar f g v = makeStateVar (f <$> getVar v) ((v $=) . g)
@@ -153,7 +169,6 @@ fromVectorVar :: StateVar H.Vector -> StateVar (V2 Double)
 fromVectorVar = mapStateVar from vectorFromV2
   where
     from (H.Vector x y) = V2 x y
-
 
 
 setDefaultHandler :: (MonadSpace m) => H.CollisionHandler -> m ()
