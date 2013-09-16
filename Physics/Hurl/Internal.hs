@@ -2,15 +2,10 @@
 
 module Physics.Hurl.Internal where
 
-import Linear
 
-import Control.Monad
 import Control.Applicative
 
 import Data.Bifunctor ( second )
-
-import Data.StateVar ( StateVar, ($=), ($=!), makeStateVar )
-import qualified Data.StateVar as StateVar
 
 import Data.IntMap ( IntMap )
 import qualified Data.IntMap as IntMap
@@ -93,20 +88,4 @@ insert a mapRef = do
     let !nextId = thisId + 1
     writeIORef mapRef (nextId, IntMap.insert thisId a imap)
     return thisId
-
-
--- | A synonym for Data.StateVar.get
-getVar :: StateVar a -> IO a
-getVar = StateVar.get
-
-mapStateVar :: (a -> b) -> (b -> a) -> StateVar a -> StateVar b
-mapStateVar f g v = makeStateVar (f <$> getVar v) ((v $=) . g)
-
-vectorFromV2 :: V2 Double -> H.Vector
-vectorFromV2 (V2 x y) = H.Vector x y
-
-varVectorToV2 :: StateVar H.Vector -> StateVar (V2 Double)
-varVectorToV2 = mapStateVar from vectorFromV2
-  where
-    from (H.Vector x y) = V2 x y
 
