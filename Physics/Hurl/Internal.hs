@@ -83,9 +83,7 @@ newtype Object = Object { objectId :: IntMap.Key }
 -- Utilities --------------------------------------------------------------
 
 insert :: a -> IORef (IntMap.Key, IntMap a) -> IO IntMap.Key
-insert a mapRef = do
-    (thisId, imap) <- readIORef mapRef
+insert a mapRef = atomicModifyIORef' mapRef $ \(thisId, imap) ->
     let !nextId = thisId + 1
-    writeIORef mapRef (nextId, IntMap.insert thisId a imap)
-    return thisId
+    in ((nextId, IntMap.insert thisId a imap), thisId)
 
