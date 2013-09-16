@@ -5,8 +5,6 @@ module Physics.Hurl.Internal where
 
 import Control.Applicative
 
-import Data.Bifunctor ( second )
-
 import Data.IntMap ( IntMap )
 import qualified Data.IntMap as IntMap
 
@@ -15,6 +13,8 @@ import Data.IORef
 import qualified Physics.Hipmunk as H
 
 import Data.Function ( on )
+
+import Data.Foldable ( forM_ )
 
 
 -- | A `Space` is a mutable reference to bodies and constraints in
@@ -52,17 +52,39 @@ stepSpace :: Double -> Space -> IO ()
 stepSpace delta space = H.step (hipmunkSpace space) (realToFrac delta)
 
 
--- | Add an object to the `Space`.
-addObject :: ObjectData -> Space -> IO Object
-addObject od = fmap Object . insert od . objectMap
+-- | Add `ObjectData` to the `Space`.
+addObjectData :: ObjectData -> Space -> IO IntMap.Key
+addObjectData od@(ObjectData b ss) (Space objectMap space)  = do
+    -- add the resources to the Hipmunk Space
+    H.spaceAdd space b
+    forM_ ss $ H.spaceAdd space
 
--- | Delete an object from the `Space`.
-deleteObject :: Object -> Space -> IO ()
-deleteObject (Object objectId) space =
-    modifyIORef' (objectMap space) $ second $ IntMap.delete objectId
+    -- add the data to the map and return its new key
+    insert od objectMap
+  where
+    insert :: a -> IORef (IntMap.Key, IntMap a) -> IO IntMap.Key
+    insert a mapRef = atomicModifyIORef' mapRef $ \(key, imap) ->
+        let !key' = key + 1
+        in ((key', IntMap.insert key a imap), key)
 
 
+-- | Delete `ObjectData` from the `Space`.
+deleteObjectData :: IntMap.Key -> Space -> IO ()
+deleteObjectData objectKey (Space objectMap space) = do
+    -- remove the data from the map and return its value
+    mData <- atomicModifyIORef' objectMap $ \(k, m) ->
+        let (mData, !m') = deleteLookup objectKey m
+        in ((k, m'), mData)
 
+    case mData of
+        Nothing -> return ()  -- user tried to delete non-existing data
+        Just (ObjectData b ss) -> do
+            -- free the resources from the Hipmunk Space
+            H.spaceRemove space b
+            forM_ ss $ H.spaceRemove space
+  where
+    deleteLookup :: IntMap.Key -> IntMap a -> (Maybe a, IntMap a)
+    deleteLookup = IntMap.updateLookupWithKey (\_ _ -> Nothing)
 
 
 
