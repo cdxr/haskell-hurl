@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 
-module Physics.Hurl.Internal where
+module Physics.Hurl.Internal.Space where
 
 
 import Control.Applicative
