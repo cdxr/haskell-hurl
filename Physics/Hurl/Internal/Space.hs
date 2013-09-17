@@ -1,3 +1,4 @@
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE BangPatterns #-}
 
 module Physics.Hurl.Internal.Space where
@@ -57,20 +58,25 @@ type ObjectKey = IntMap.Key
 
 -- | The hidden Hipmunk data stored in a `Space`, associated to an
 -- `ObjectKey`.
-data ObjectData = ObjectData !H.Body ![H.Shape]
+data ObjectData = ObjectData !H.Body [H.Shape] [H.StaticShape]
     deriving (Eq, Ord)
+
+deriving instance Eq H.StaticShape
+deriving instance Ord H.StaticShape
 
 
 -- | Add `ObjectData` to the `Space`.
 addObjectData :: ObjectData -> Space -> IO ObjectKey
-addObjectData (ObjectData b ss) (Space finalizers space)  = do
+addObjectData (ObjectData b ss stcs) (Space finalizers space)  = do
     -- add the resources to the Hipmunk Space
     H.spaceAdd space b
     forM_ ss $ H.spaceAdd space
+    forM_ stcs $ H.spaceAdd space
 
     let remove = do
-        H.spaceRemove space b
         forM_ ss $ H.spaceRemove space
+        forM_ stcs $ H.spaceRemove space
+        H.spaceRemove space b
 
     -- add the finalizer to the map and return its new key
     insert remove finalizers
