@@ -52,8 +52,17 @@ stepSpace :: Double -> Space -> IO ()
 stepSpace delta space = H.step (hipmunkSpace space) (realToFrac delta)
 
 
+
+type ObjectKey = IntMap.Key
+
+-- The private Hipmunk data associated with an `Object` and stored in
+-- a `Space`.
+data ObjectData = ObjectData !H.Body ![H.Shape]
+    deriving (Eq, Ord)
+
+
 -- | Add `ObjectData` to the `Space`.
-addObjectData :: ObjectData -> Space -> IO IntMap.Key
+addObjectData :: ObjectData -> Space -> IO ObjectKey
 addObjectData od@(ObjectData b ss) (Space objectMap space)  = do
     -- add the resources to the Hipmunk Space
     H.spaceAdd space b
@@ -69,7 +78,7 @@ addObjectData od@(ObjectData b ss) (Space objectMap space)  = do
 
 
 -- | Delete `ObjectData` from the `Space`.
-deleteObjectData :: IntMap.Key -> Space -> IO ()
+deleteObjectData :: ObjectKey -> Space -> IO ()
 deleteObjectData objectKey (Space objectMap space) = do
     -- remove the data from the map and return its value
     mData <- atomicModifyIORef' objectMap $ \(k, m) ->
@@ -85,20 +94,6 @@ deleteObjectData objectKey (Space objectMap space) = do
   where
     deleteLookup :: IntMap.Key -> IntMap a -> (Maybe a, IntMap a)
     deleteLookup = IntMap.updateLookupWithKey (\_ _ -> Nothing)
-
-
-
--- The private Hipmunk data associated with an `Object` and stored in
--- a `Space`.
-data ObjectData = ObjectData !H.Body ![H.Shape]
-    deriving (Eq, Ord)
-
-
--- | An `Object` represents a body and any attached shapes in a `Space`.
-newtype Object = Object { objectId :: IntMap.Key }
-    deriving (Eq, Ord)
-
-
 
 
 
