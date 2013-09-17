@@ -10,11 +10,11 @@ import qualified Data.IntMap as IntMap
 
 import Data.IORef
 
-import qualified Physics.Hipmunk as H
-
 import Data.Function ( on )
-
 import Data.Foldable ( forM_ )
+import Data.Maybe    ( fromMaybe )
+
+import qualified Physics.Hipmunk as H
 
 
 -- | A `Space` is a mutable reference to bodies and constraints in
@@ -23,7 +23,7 @@ import Data.Foldable ( forM_ )
 -- This is essentially the Hipmunk type `H.Space`
 -- with additional bookkeeping.
 data Space = Space 
-    { objectMap    :: !(IORef (IntMap.Key, IntMap ObjectData))
+    { finalizerMap :: !(IORef (IntMap.Key, IntMap (IO ())))
     , hipmunkSpace :: !H.Space
     }
 
@@ -52,10 +52,10 @@ stepSpace :: Double -> Space -> IO ()
 stepSpace delta space = H.step (hipmunkSpace space) (realToFrac delta)
 
 
--- An external key to hidden Hipmunk data
+-- | An external key to hidden Hipmunk data
 type ObjectKey = IntMap.Key
 
--- The hidden Hipmunk data stored in a `Space`, associated to an
+-- | The hidden Hipmunk data stored in a `Space`, associated to an
 -- `ObjectKey`.
 data ObjectData = ObjectData !H.Body ![H.Shape]
     deriving (Eq, Ord)
@@ -63,13 +63,17 @@ data ObjectData = ObjectData !H.Body ![H.Shape]
 
 -- | Add `ObjectData` to the `Space`.
 addObjectData :: ObjectData -> Space -> IO ObjectKey
-addObjectData od@(ObjectData b ss) (Space objectMap space)  = do
+addObjectData (ObjectData b ss) (Space finalizers space)  = do
     -- add the resources to the Hipmunk Space
     H.spaceAdd space b
     forM_ ss $ H.spaceAdd space
 
-    -- add the data to the map and return its new key
-    insert od objectMap
+    let remove = do
+        H.spaceRemove space b
+        forM_ ss $ H.spaceRemove space
+
+    -- add the finalizer to the map and return its new key
+    insert remove finalizers
   where
     insert :: a -> IORef (IntMap.Key, IntMap a) -> IO IntMap.Key
     insert a mapRef = atomicModifyIORef' mapRef $ \(key, imap) ->
@@ -79,18 +83,15 @@ addObjectData od@(ObjectData b ss) (Space objectMap space)  = do
 
 -- | Delete `ObjectData` from the `Space`.
 deleteObjectData :: ObjectKey -> Space -> IO ()
-deleteObjectData objectKey (Space objectMap space) = do
+deleteObjectData objectKey (Space finalizers _) = do
     -- remove the data from the map and return its value
-    mData <- atomicModifyIORef' objectMap $ \(k, m) ->
+    mFin <- atomicModifyIORef' finalizers $ \(k, m) ->
         let (mData, !m') = deleteLookup objectKey m
         in ((k, m'), mData)
 
-    case mData of
-        Nothing -> return ()  -- user tried to delete non-existing data
-        Just (ObjectData b ss) -> do
-            -- free the resources from the Hipmunk Space
-            H.spaceRemove space b
-            forM_ ss $ H.spaceRemove space
+    -- mFin is Nothing when user tries to delete non-existing data
+    -- should this raise an exception?
+    fromMaybe (return ()) mFin
   where
     deleteLookup :: IntMap.Key -> IntMap a -> (Maybe a, IntMap a)
     deleteLookup = IntMap.updateLookupWithKey (\_ _ -> Nothing)
