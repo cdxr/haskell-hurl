@@ -52,11 +52,11 @@ stepSpace :: Double -> Space -> IO ()
 stepSpace delta space = H.step (hipmunkSpace space) (realToFrac delta)
 
 
-
+-- An external key to hidden Hipmunk data
 type ObjectKey = IntMap.Key
 
--- The private Hipmunk data associated with an `Object` and stored in
--- a `Space`.
+-- The hidden Hipmunk data stored in a `Space`, associated to an
+-- `ObjectKey`.
 data ObjectData = ObjectData !H.Body ![H.Shape]
     deriving (Eq, Ord)
 
@@ -94,13 +94,3 @@ deleteObjectData objectKey (Space objectMap space) = do
   where
     deleteLookup :: IntMap.Key -> IntMap a -> (Maybe a, IntMap a)
     deleteLookup = IntMap.updateLookupWithKey (\_ _ -> Nothing)
-
-
-
--- Utilities --------------------------------------------------------------
-
-insert :: a -> IORef (IntMap.Key, IntMap a) -> IO IntMap.Key
-insert a mapRef = atomicModifyIORef' mapRef $ \(thisId, imap) ->
-    let !nextId = thisId + 1
-    in ((nextId, IntMap.insert thisId a imap), thisId)
-
