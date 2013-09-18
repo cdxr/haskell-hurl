@@ -2,7 +2,7 @@ module Physics.Hurl.Internal.Utils where
 
 import Linear
 
-import Data.StateVar ( StateVar, ($=), ($=!), makeStateVar )
+import Data.StateVar ( StateVar, ($=), makeStateVar )
 import qualified Data.StateVar as StateVar
 
 import qualified Physics.Hipmunk as H
