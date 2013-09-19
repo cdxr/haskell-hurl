@@ -3,11 +3,34 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Physics.Hurl.Object where
+module Physics.Hurl.Object
+(
+-- * Bodies
+   Mass
+ , Moment
+ , Body (..)
+-- * Solids
+ , Solid
+ , solid
+ , Shape
+ , shape
+-- * Objects
+ , Object
+ , object
+ , body
+ , solids
+ , create
+-- * Simple Objects
+ , Object'
+ , ObjectRef'
+ , simple
+)
+where
 
 import Linear
-import Control.Lens
+import Control.Lens.TH
 
+import Data.Traversable ( Traversable )
 import qualified Data.Traversable as Traversable
 
 import Data.Functor.Identity
