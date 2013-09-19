@@ -85,3 +85,7 @@ create (V2 x y) (Object init body solids) space = do
     objectRef <- createObjectRef (body == Static) b shapes space
     init objectRef
     return objectRef
+
+
+delete :: ObjectRef f -> IO ()
+delete = deleteObjectRef
