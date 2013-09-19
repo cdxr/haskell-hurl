@@ -1,10 +1,10 @@
 module Physics.Hurl.ObjectRef
 (
    ObjectRef
- , createObjectRef
- , deleteObjectRef
+ , SolidRef
 
 -- * Applying Forces
+ , Force
  , applyForce
  , applyOnlyForce
  , applyImpulse
@@ -25,49 +25,13 @@ module Physics.Hurl.ObjectRef
 where
 
 import Linear.V2
-import Data.StateVar ( StateVar )
 
-import Data.Foldable ( Foldable, foldMap )
-import Data.Monoid
+import Data.StateVar ( StateVar )
 
 import qualified Physics.Hipmunk as H
 
-import Physics.Hurl.Internal.Resource
-import Physics.Hurl.Internal.Space
+import Physics.Hurl.Internal.ObjectRef
 import Physics.Hurl.Internal.Utils
-
-
-data ShapeMode = Static | Dynamic
-    deriving (Show, Read, Eq, Ord)
-
-
--- | A reference to a physical entity in a `Space`.
-data ObjectRef f = ObjectRef
-    { objectSpace     :: Space
-    , objectBody      :: H.Body
-    , objectShapes    :: f H.Shape
-    , objectFinalizer :: IO ()
-    }
-
-
--- | Create an `ObjectRef` in the `Space`.
-createObjectRef :: (Foldable f) => ShapeMode -> H.Body -> f H.Shape -> Space -> IO (ObjectRef f)
-createObjectRef shapeMode b ss space = do
-    let resource = spaceResource b <> foldMap mkShape ss
-
-    fin <- runResource resource space
-
-    return $ ObjectRef space b ss fin
-  where
-    mkShape = case shapeMode of
-        Static  -> spaceResource . H.Static
-        Dynamic -> spaceResource
-
-
--- | Delete an `ObjectRef`.
-deleteObjectRef :: ObjectRef f -> IO ()
-deleteObjectRef = objectFinalizer
-
 
 
 position :: ObjectRef f -> StateVar (V2 Double)
