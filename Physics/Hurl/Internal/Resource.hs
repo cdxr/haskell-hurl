@@ -44,13 +44,14 @@ insertFinalizer :: IO () -> FinalizerMap -> (FinalizerMap, IntMap.Key)
 insertFinalizer fin (FM k imap) = (FM (k + 1) (IntMap.insert k fin imap), k)
 
 -- | Run the finalizer with the corresponding `IntMap.Key`, and remove it
--- from the map. If no finalizer matches the key, the map is returned
--- unmodified.
-runFinalizer :: IntMap.Key -> FinalizerMap -> IO FinalizerMap
-runFinalizer key (FM k imap) = do
-    let (mFin, imap') = deleteLookup key imap
+-- from the map. If no finalizer matches the key, the map is unmodified.
+runFinalizer :: IntMap.Key -> IORef FinalizerMap -> IO ()
+runFinalizer key finRef = do
+    mFin <- atomicModifyIORef' finRef $ \(FM k imap) ->
+        let (mFin, imap') = deleteLookup key imap
+        in (FM k imap', mFin)
     Traversable.sequence mFin
-    return $ FM k imap'
+    return ()
   where
     deleteLookup :: IntMap.Key -> IntMap a -> (Maybe a, IntMap a)
     deleteLookup = IntMap.updateLookupWithKey (\_ _ -> Nothing)
