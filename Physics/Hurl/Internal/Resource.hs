@@ -34,6 +34,9 @@ runResource (Resource r) e = let (add, remove) = r e in add >> return remove
 
 data FinalizerMap = FM !IntMap.Key (IntMap (IO ()))
 
+-- | An empty FinalizerMap
+emptyFinalizerMap :: FinalizerMap
+emptyFinalizerMap = FM 0 IntMap.empty
 
 -- | Add a new finalizer to the `FinalizerMap`, returning a new map and the
 -- new key.
