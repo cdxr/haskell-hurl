@@ -88,8 +88,8 @@ type ObjectRef' = ObjectRef Identity
 object :: Body -> f (V2 Double, Solid) -> Object f
 object = Object (\_ -> return ())
 
-simple :: Body -> Solid -> Object'
-simple b = object b . Identity . (,) 0
+simpleObject :: Body -> Solid -> Object'
+simpleObject b = object b . Identity . (,) 0
 
 
 create :: (Traversable f) => V2 Double -> Object f -> Space -> IO (ObjectRef f)
