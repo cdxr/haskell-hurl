@@ -1,4 +1,4 @@
-module Physics.Hurl.Shapes
+module Physics.Hurl.Shape
 (
   H.ShapeType
 , Thickness
@@ -9,7 +9,8 @@ module Physics.Hurl.Shapes
 )
 where
 
-import Linear
+import Linear.V2
+import Linear.Affine
 
 import qualified Physics.Hipmunk as H
 
@@ -29,7 +30,7 @@ polygon = H.Polygon . map vectorFromV2
 
 rectangle :: Double -> Double -> H.ShapeType
 rectangle w h = H.Polygon $ map (uncurry H.Vector)
-                    [(-x, -y), (x, -y), (x, y), (-x, y)]
+                    [(-x, -y), (-x, y), (x, y), (x, -y)]
       where x = w/2
             y = h/2
 
