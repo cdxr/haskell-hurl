@@ -23,7 +23,7 @@ module Physics.Hurl.Object
 -- * Simple Objects
  , Object'
  , ObjectRef'
- , simple
+ , simpleObject
 )
 where
 
