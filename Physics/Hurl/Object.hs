@@ -40,11 +40,6 @@ import Physics.Hurl.Internal.ObjectRef
 import Physics.Hurl.Internal.Space
 
 
--- NOTE
--- We do not call or export an equivalent of H.initChipmunk here because it is
--- a no-op. See cpInitChipmunk in chipmunk.c
-
-
 type Mass = Double
 type Moment = Double
 

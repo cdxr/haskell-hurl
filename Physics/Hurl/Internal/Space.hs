@@ -2,12 +2,24 @@ module Physics.Hurl.Internal.Space where
 
 
 import Control.Applicative
-
+import Control.Monad ( unless )
 import Data.Function ( on )
+
+import Data.IORef
+import System.IO.Unsafe ( unsafePerformIO )
 
 import qualified Physics.Hipmunk as H
 
 import Physics.Hurl.Internal.Resource
+
+
+-- | A global reference used to determine if we have called `H.initChipmunk`.
+--
+-- The first time we initialize a `Space`, we call `H.initChipmunk` and
+-- set this to @True@.
+_chipmunkInitialized :: IORef Bool
+_chipmunkInitialized = unsafePerformIO $ newIORef False
+{-# NOINLINE _chipmunkInitialized #-}
 
 
 -- | A `Space` is a mutable collection of bodies and constraints in
@@ -26,7 +38,12 @@ instance Ord Space where
 
 -- | Create a new empty `Space`.
 newSpace :: IO Space
-newSpace = Space <$> H.newSpace
+newSpace = do
+    b <- readIORef _chipmunkInitialized
+    unless b $ do
+        H.initChipmunk
+        writeIORef _chipmunkInitialized True
+    Space <$> H.newSpace
 
 
 -- todo: add a finalizer to perform this automatically
