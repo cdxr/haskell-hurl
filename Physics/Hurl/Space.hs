@@ -11,6 +11,7 @@ module Physics.Hurl.Space
 , gravity
 , resizeStaticHash
 , resizeActiveHash
+, setDefaultCollisionHandler
 )
 where
 
@@ -26,7 +27,9 @@ import Physics.Hurl.Internal.Space as I
 import Physics.Hurl.Internal.Utils
 
 
---todo Point Query
+-- TODO
+--  replace setDefaultCollisionHandler with new functionality
+--  point query
 
 
 getTimeStamp :: Space -> IO CInt
@@ -48,3 +51,8 @@ resizeStaticHash cellSize minCells s =
 resizeActiveHash :: Double -> CInt -> Space -> IO ()
 resizeActiveHash cellSize minCells s =
     H.resizeActiveHash (hipmunkSpace s) cellSize minCells
+
+
+
+setDefaultCollisionHandler :: H.CollisionHandler -> Space -> IO ()
+setDefaultCollisionHandler h s = H.setDefaultCollisionHandler (hipmunkSpace s) h
