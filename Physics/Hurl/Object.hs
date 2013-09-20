@@ -9,11 +9,6 @@ module Physics.Hurl.Object
    Mass
  , Moment
  , Body (..)
--- * Solids
- , Solid
- , solid
- , Shape
- , shape
 -- * Objects
  , Object
  , object
@@ -39,6 +34,8 @@ import Data.StateVar ( ($=) )
 
 import qualified Physics.Hipmunk as H
 
+import Physics.Hurl.Solid
+
 import Physics.Hurl.Internal.ObjectRef
 import Physics.Hurl.Internal.Space
 
@@ -55,22 +52,6 @@ type Moment = Double
 -- static body.
 data Body = Body Mass Moment | Static
     deriving (Show, Read, Eq, Ord)
-
-
-type Shape = H.ShapeType
-
--- | An entity capable of collisions, attached to a `Body` and consisting of
--- geometry and material properties.
-data Solid = Solid
-    { initSolid :: SolidRef -> IO ()
-    , _shape    :: Shape
-    }
-
-$(makeLenses ''Solid)
-
--- | Create a `Solid` with default properties from a `Shape`.
-solid :: Shape -> Solid
-solid = Solid (\_ -> return ())
 
 
 data Object f = Object
@@ -99,11 +80,7 @@ create (V2 x y) (Object init body solids) space = do
         Body ma mo -> H.newBody ma mo
     H.position b $= H.Vector x y
 
-    shapes <- Traversable.forM solids $
-        \(V2 x y, Solid initSolid shapeType) -> do
-            s <- H.newShape b shapeType (H.Vector x y)
-            initSolid s
-            return s
+    shapes <- Traversable.forM solids $ \(pos, solid) -> addToBody pos solid b
 
     objectRef <- createObjectRef (body == Static) b shapes space
     init objectRef
