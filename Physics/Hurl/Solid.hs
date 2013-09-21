@@ -53,10 +53,6 @@ solidWith :: Shape -> (SolidRef -> IO ()) -> Solid
 solidWith = flip Solid
 
 
--- | Determine if a point intersects with a Solid.
-querySolid :: V2 Double -> SolidRef -> IO Bool
-querySolid (V2 x y) s = H.shapePointQuery s (H.Vector x y)
-
 
 -- | @addToBody p s b@ adds the `Solid` @s@ to the Hipmunk `H.Body` at
 -- position @p@.

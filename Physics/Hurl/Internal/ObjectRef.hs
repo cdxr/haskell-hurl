@@ -1,8 +1,10 @@
 module Physics.Hurl.Internal.ObjectRef where
 
 import Control.Applicative
+import Control.Monad
+import Linear.V2
 
-import Data.Foldable ( Foldable, foldMap )
+import Data.Foldable ( Foldable, foldMap, toList )
 import Data.Monoid
 
 import qualified Physics.Hipmunk as H
@@ -42,3 +44,11 @@ createObjectRef static b ss space = ObjectRef space b ss <$> runResource r space
 deleteObjectRef :: ObjectRef f -> IO ()
 deleteObjectRef = objectFinalizer
 
+
+-- | Determine if a point intersects with a solid.
+querySolid :: V2 Double -> SolidRef -> IO Bool
+querySolid (V2 x y) s = H.shapePointQuery s (H.Vector x y)
+
+-- | Find all solids in the given object that contain the point.
+queryObject :: (Foldable f) => V2 Double -> ObjectRef f -> IO [SolidRef]
+queryObject p = filterM (querySolid p) . toList . objectSolids

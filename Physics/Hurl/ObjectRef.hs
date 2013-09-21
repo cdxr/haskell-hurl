@@ -9,6 +9,9 @@ module Physics.Hurl.ObjectRef
  , applyOnlyForce
  , applyImpulse
 
+-- * Collision Queries
+ , queryObject
+
 -- * Mutable properties
 -- ** Position
  , position
@@ -32,6 +35,7 @@ import qualified Physics.Hipmunk as H
 
 import Physics.Hurl.Internal.ObjectRef
 import Physics.Hurl.Internal.Utils
+
 
 
 position :: ObjectRef f -> StateVar (V2 Double)
