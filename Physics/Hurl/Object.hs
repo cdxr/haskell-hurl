@@ -64,8 +64,10 @@ type ObjectRef' = ObjectRef Identity
 object :: Body -> f (V2 Double, Solid) -> Object f
 object = Object (\_ -> return ())
 
-simpleObject :: Body -> Solid -> Object'
-simpleObject b = object b . Identity . (,) 0
+simpleObject :: Mass -> Solid -> Object'
+simpleObject m s = object (Body m moment) $ Identity (0, s)
+  where
+    moment = momentForSolid s m 0
 
 
 create :: (Traversable f) => V2 Double -> Object f -> Space -> IO (ObjectRef f)

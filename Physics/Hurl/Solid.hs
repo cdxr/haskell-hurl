@@ -9,6 +9,7 @@ module Physics.Hurl.Solid
  , shape
  , addToBody
  , querySolid
+ , momentForSolid
 -- * Mutable Properties
  , elasticity
  , friction
@@ -46,6 +47,12 @@ $(makeLenses ''Solid)
 -- | Create a `Solid` with default properties from a `Shape`.
 solid :: Shape -> Solid
 solid = Solid (\_ -> return ())
+
+
+-- | @momentForSolid s m o@ calculate the moment of intertia for the solid 
+-- @s@ of mass @m@ at offset @o@.
+momentForSolid :: Solid -> Double -> V2 Double -> Double
+momentForSolid s m (V2 x y) = H.momentForShape m (_shape s) (H.Vector x y)
 
 
 -- | Create a `Solid` from a shape and a `SolidRef` action.
