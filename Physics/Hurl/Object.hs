@@ -19,6 +19,7 @@ module Physics.Hurl.Object
  , Object'
  , ObjectRef'
  , simpleObject
+ , simpleStatic
 )
 where
 
@@ -68,6 +69,9 @@ simpleObject :: Mass -> Solid -> Object'
 simpleObject m s = object (Body m moment) $ Identity (0, s)
   where
     moment = momentForSolid s m 0
+
+simpleStatic :: Solid -> Object'
+simpleStatic s = object Static $ Identity (0, s)
 
 
 create :: (Traversable f) => V2 Double -> Object f -> Space -> IO (ObjectRef f)
