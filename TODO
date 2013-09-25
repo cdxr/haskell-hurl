@@ -1,0 +1,7 @@
+TODO
+
+add `Empty` type isomorphic to `Const ()` for representing shapeless objections
+add `[Constraint]` parameter to `ObjectRef`
+add `Friction` and `Elasticity` parameters to `Solid`
+
+
