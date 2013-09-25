@@ -1,6 +1,3 @@
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE ExistentialQuantification #-}
-
 module Physics.Hurl.Constraint where
 
 import Linear.V2
