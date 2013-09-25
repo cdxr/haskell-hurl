@@ -1,6 +1,7 @@
 module Physics.Hurl.Constraint where
 
 import Linear.V2
+import Control.Applicative
 
 import qualified Physics.Hipmunk as H
 
@@ -12,13 +13,18 @@ data Pin = Pin H.Space (H.Constraint H.Pin)
   deriving (Eq, Ord)
 
 
-pinObjects :: (V2 Double, ObjectRef f) -> (V2 Double, ObjectRef g) -> IO Pin
-pinObjects (V2 ax ay, ao) (V2 bx by, bo) = do
-    c <- H.newConstraint (objectBody ao) (objectBody bo) hpin
+-- | @pinObjects p a b@ creates a `Pin` between objects @a@ and @b@ at
+-- global position @p@.
+pinObjects :: V2 Double -> ObjectRef f -> ObjectRef g -> IO Pin
+pinObjects (V2 x y) ao bo = do
+    c <- H.newConstraint a b =<< makeHipmunkPin
     H.spaceAdd space c
     return $ Pin space c
   where
-    hpin = H.Pin (H.Vector ax ay) (H.Vector bx by)
+    pos   = H.Vector x y
+    a     = objectBody ao
+    b     = objectBody bo
+    makeHipmunkPin = H.Pin <$> H.worldToLocal a pos <*> H.worldToLocal b pos
     space = hipmunkSpace . objectSpace $ ao
 
 
