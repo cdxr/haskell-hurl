@@ -12,6 +12,7 @@ import Physics.Hurl.Internal.Space
 newtype Constraint = Constraint (IO ())
 
 
+
 -- | @pinObjects p a b@ creates a `Pin` between objects @a@ and @b@ at
 -- global position @p@.
 pinObjects :: V2 Double -> ObjectRef f -> ObjectRef g -> IO Constraint
@@ -27,9 +28,13 @@ pinObjects (V2 x y) ao bo = do
     space = hipmunkSpace . objectSpace $ ao
 
 
-pivotObjects :: V2 Double -> ObjectRef f -> ObjectRef g -> IO Constraint
-pivotObjects (V2 x y) ao bo = do
+type BiasCoef = Double
+
+
+pivotObjects :: BiasCoef -> V2 Double -> ObjectRef f -> ObjectRef g -> IO Constraint
+pivotObjects bc (V2 x y) ao bo = do
     c <- H.newConstraint a b $ H.Pivot1 pos
+    H.setBiasCoefC bc c
     H.spaceAdd space c
     return $ Constraint $ H.spaceRemove space c
   where
@@ -37,6 +42,7 @@ pivotObjects (V2 x y) ao bo = do
     a     = objectBody ao
     b     = objectBody bo
     space = hipmunkSpace . objectSpace $ ao
+
 
 
 deleteConstraint :: Constraint -> IO ()
