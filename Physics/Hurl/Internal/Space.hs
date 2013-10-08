@@ -1,11 +1,18 @@
-module Physics.Hurl.Internal.Space where
+module Physics.Hurl.Internal.Space (
+    Space,
+    hipmunkSpace,
+    newSpace,
+    deleteSpace,
+    stepSpace,
+    spaceResource,
+    ) where
 
 
 import Control.Applicative
 import Control.Monad ( unless )
-import Data.Function ( on )
 
-import Data.IORef
+import Control.Concurrent.MVar
+
 import System.IO.Unsafe ( unsafePerformIO )
 
 import qualified Physics.Hipmunk as H
@@ -17,32 +24,24 @@ import Physics.Hurl.Internal.Resource
 --
 -- The first time we initialize a `Space`, we call `H.initChipmunk` and
 -- set this to @True@.
-_chipmunkInitialized :: IORef Bool
-_chipmunkInitialized = unsafePerformIO $ newIORef False
+_chipmunkInitialized :: MVar Bool
+_chipmunkInitialized = unsafePerformIO $ newMVar False
 {-# NOINLINE _chipmunkInitialized #-}
 
 
--- | A `Space` is a mutable collection of bodies and constraints in
--- a physical simulation. All operations on `Space` are in IO.
---
--- This is essentially the Hipmunk type `H.Space`
--- with additional bookkeeping.
+-- | A `Space` is a mutable container of bodies, shapes, and constraints
+-- that simulates their physical interactions.
 newtype Space = Space { hipmunkSpace :: H.Space }
-
-instance Eq Space where
-    (==) = (==) `on` hipmunkSpace
-
-instance Ord Space where
-    compare = compare `on` hipmunkSpace
+    deriving (Eq, Ord)
 
 
 -- | Create a new empty `Space`.
 newSpace :: IO Space
 newSpace = do
-    b <- readIORef _chipmunkInitialized
-    unless b $ do
-        H.initChipmunk
-        writeIORef _chipmunkInitialized True
+    -- check the global MVar to see if Chipmunk has been initialized
+    modifyMVar_ _chipmunkInitialized $ \b -> do
+        unless b H.initChipmunk
+        return True
     Space <$> H.newSpace
 
 
