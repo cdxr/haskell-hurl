@@ -35,8 +35,9 @@ import Foreign.C ( CInt )
 
 import Physics.Hurl.Solid
 
+import Physics.Hurl.Object
+
 import Physics.Hurl.Internal.Space as I
-import Physics.Hurl.Internal.Object
 import Physics.Hurl.Internal.ObjectRef
 import Physics.Hurl.Internal.Utils
 
@@ -49,7 +50,7 @@ import Physics.Hurl.Internal.Utils
 -- responsible for preventing memory leaks by calling deleteObject on
 -- ObjectRefs.
 addObject :: (Traversable f) => V2 Double -> Object f -> Space -> IO (ObjectRef f)
-addObject (V2 x y) (Object init body solids) space = do
+addObject (V2 x y) (Object body solids) space = do
     b <- case body of
         Static     -> H.newBody H.infinity H.infinity
         Body ma mo -> H.newBody ma mo
@@ -61,9 +62,7 @@ addObject (V2 x y) (Object init body solids) space = do
         H.friction   ref $= friction   s
         return ref
 
-    objectRef <- createObjectRef (body == Static) b shapes space
-    init objectRef
-    return objectRef
+    createObjectRef (body == Static) b shapes space
 
 
 -- | Delete all all Chipmunk entities referenced by an `ObjectRef`.

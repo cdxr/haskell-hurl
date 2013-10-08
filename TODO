@@ -1,8 +1,8 @@
 TODO
 
+implement positioning of Solids in Physics.Hurl.Space.addObject
+
 add `Empty` type isomorphic to `Const ()` for representing shapeless objections
 add `[Constraint]` parameter to `ObjectRef`
   -- maybe deallocate Constraints when an ObjectRef is removed?
-add `Friction` and `Elasticity` parameters to `Solid`
-  -- OR add Material type
 add `Group` functionality automatically to composite objects

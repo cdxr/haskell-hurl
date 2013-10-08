@@ -1,30 +1,33 @@
 module Physics.Hurl.ObjectRef
 (
-   ObjectRef
- , SolidRef
+    ObjectRef,
+    ObjectRef',
+    SolidRef,
 
 -- * Applying Forces
- , Force
- , applyForce
- , applyOnlyForce
- , applyImpulse
+    Force,
+    applyForce,
+    applyOnlyForce,
+    applyImpulse,
 
 -- * Mutable properties
 -- ** Position
- , position
- , angle
+    position,
+    angle,
 -- ** Velocity
- , velocity
- , angVel
- , maxVelocity
- , maxAngVel
+    velocity,
+    angVel,
+    maxVelocity,
+    maxAngVel,
 -- ** Force
- , force
- , torque
+    force,
+    torque,
 )
 where
 
 import Linear.V2
+
+import Data.Functor.Identity
 
 import Data.StateVar ( StateVar )
 
@@ -33,6 +36,8 @@ import qualified Physics.Hipmunk as H
 import Physics.Hurl.Internal.ObjectRef
 import Physics.Hurl.Internal.Utils
 
+
+type ObjectRef' = ObjectRef Identity
 
 
 position :: ObjectRef f -> StateVar (V2 Double)

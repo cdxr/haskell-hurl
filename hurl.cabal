@@ -13,5 +13,5 @@ cabal-version:       >=1.8
 
 library
   exposed-modules:     Physics.Hurl, Physics.Hurl.Space, Physics.Hurl.Object, Physics.Hurl.ObjectRef, Physics.Hurl.Solid, Physics.Hurl.Shape, Physics.Hurl.Constraint, Physics.Hurl.Query
-  other-modules:       Physics.Hurl.Internal.Resource, Physics.Hurl.Internal.Utils, Physics.Hurl.Internal.Object, Physics.Hurl.Internal.ObjectRef, Physics.Hurl.Internal.Space
+  other-modules:       Physics.Hurl.Internal.Resource, Physics.Hurl.Internal.Utils, Physics.Hurl.Internal.ObjectRef, Physics.Hurl.Internal.Space
   build-depends:       base ==4.6.*, containers ==0.5.*, linear ==1.2.*, lens ==3.9.*, mtl ==2.1.*, exceptions ==0.3.*, transformers ==0.3.*, StateVar ==1.0.*, Hipmunk ==5.2.*
