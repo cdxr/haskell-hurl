@@ -1,30 +1,78 @@
-module Physics.Hurl.Space
-(
-  I.Space
-, I.newSpace
-, I.deleteSpace
-, I.stepSpace
+module Physics.Hurl.Space (
+    -- * Spaces
+    I.Space,
+    I.newSpace,
+    I.deleteSpace,
+    I.stepSpace,
 
-, getTimeStamp
-, iterations
-, damping
-, gravity
-, resizeStaticHash
-, resizeActiveHash
-, setDefaultCollisionHandler
+    -- ** Objects
+    addObject,
+    deleteObject,
+
+    -- ** Properties
+    -- | These properties are taken directly from Hipmunk for the time
+    -- being.
+    getTimeStamp,
+    iterations,
+    damping,
+    gravity,
+    resizeStaticHash,
+    resizeActiveHash,
+    setDefaultCollisionHandler,
 )
 where
 
 import Linear.V2
 
-import Data.StateVar ( StateVar )
+import Data.Traversable ( Traversable )
+import qualified Data.Traversable as Traversable
+
+import Data.StateVar ( StateVar, ($=) )
 import qualified Data.StateVar as StateVar
 
 import qualified Physics.Hipmunk as H
 import Foreign.C ( CInt )
 
+import Physics.Hurl.Solid
+
 import Physics.Hurl.Internal.Space as I
+import Physics.Hurl.Internal.Object
+import Physics.Hurl.Internal.ObjectRef
 import Physics.Hurl.Internal.Utils
+
+
+-- | Allocate an @Object f@ in the space. The `ObjectRef` returned is a
+-- reference to the newly created Chipmunk entities in the space.
+--
+-- WARNING: The garbage collector will not automatically remove the
+-- internal Chipmunk entities when it collects the ObjectRef. The user is
+-- responsible for preventing memory leaks by calling deleteObject on
+-- ObjectRefs.
+addObject :: (Traversable f) => V2 Double -> Object f -> Space -> IO (ObjectRef f)
+addObject (V2 x y) (Object init body solids) space = do
+    b <- case body of
+        Static     -> H.newBody H.infinity H.infinity
+        Body ma mo -> H.newBody ma mo
+    H.position b $= H.Vector x y
+
+    shapes <- Traversable.forM solids $ \(pos, s) -> do
+        ref <- H.newShape b (shape s) (H.Vector x y)
+        H.elasticity ref $= elasticity s
+        H.friction   ref $= friction   s
+        return ref
+
+    objectRef <- createObjectRef (body == Static) b shapes space
+    init objectRef
+    return objectRef
+
+
+-- | Delete all all Chipmunk entities referenced by an `ObjectRef`.
+--
+-- WARNING: All operations on an ObjectRef that has been deleted are
+-- undefined.
+deleteObject :: ObjectRef f -> IO ()
+deleteObject = deleteObjectRef
+
 
 
 -- TODO
