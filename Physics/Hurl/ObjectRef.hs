@@ -9,9 +9,6 @@ module Physics.Hurl.ObjectRef
  , applyOnlyForce
  , applyImpulse
 
--- * Collision Queries
- , queryObject
-
 -- * Mutable properties
 -- ** Position
  , position

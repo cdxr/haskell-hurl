@@ -8,7 +8,6 @@ module Physics.Hurl.Solid
  , Shape
  , shape
  , addToBody
- , querySolid
  , momentForSolid
 -- * Mutable Properties
  , elasticity
