@@ -1,6 +1,6 @@
 TODO
 
-implement positioning of Solids in Physics.Hurl.Space.addObject
+implement positioning of Solids in Physics.Hurl.Internal.Space.addObject
 
 add `Empty` type isomorphic to `Const ()` for representing shapeless objections
 add `[Constraint]` parameter to `ObjectRef`

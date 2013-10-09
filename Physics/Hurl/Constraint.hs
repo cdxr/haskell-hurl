@@ -5,7 +5,6 @@ import Control.Applicative
 
 import qualified Physics.Hipmunk as H
 
-import Physics.Hurl.Internal.ObjectRef
 import Physics.Hurl.Internal.Space
 
 

@@ -4,20 +4,20 @@ module Physics.Hurl.Solid
     Solid (..),
     solid,
     momentForSolid,
+    {-
     -- * Mutable Properties
     elasticityRef,
     frictionRef,
+    -}
     ) where
 
 
 import Linear.V2
-import Data.StateVar as StateVar
 
 import qualified Physics.Hipmunk as H
 
 import Physics.Hurl.Shape ( Shape )
 
-import Physics.Hurl.Internal.ObjectRef
 
 
 -- TODO
@@ -45,7 +45,7 @@ momentForSolid :: Solid -> Double -> V2 Double -> Double
 momentForSolid s m (V2 x y) = H.momentForShape m (shape s) (H.Vector x y)
 
 
-
+{-
 -- | The elasticity of the solid in the range 0 to 1.
 elasticityRef :: SolidRef -> StateVar Double
 elasticityRef = H.elasticity
@@ -56,3 +56,4 @@ elasticityRef = H.elasticity
 -- friction of both solids.
 frictionRef :: SolidRef -> StateVar Double
 frictionRef = H.friction
+-}

@@ -33,7 +33,7 @@ import Data.StateVar ( StateVar )
 
 import qualified Physics.Hipmunk as H
 
-import Physics.Hurl.Internal.ObjectRef
+import Physics.Hurl.Internal.Space
 import Physics.Hurl.Internal.Utils
 
 

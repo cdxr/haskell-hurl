@@ -7,7 +7,7 @@ import Data.Foldable ( Foldable, toList )
 
 import qualified Physics.Hipmunk as H
 
-import Physics.Hurl.Internal.ObjectRef
+import Physics.Hurl.Internal.Space
 
 
 -- | @querySolid p s@ determines if the solid @s@ contains the point @p@.
