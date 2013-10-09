@@ -7,7 +7,7 @@ module Physics.Hurl.Internal.Space (
     stepSpace,
     -- * ObjectRefs
     ObjectRef (..),
-    SolidRef,
+    SolidRef (..),
     addObject,
     deleteObject,
     ) where
@@ -30,6 +30,7 @@ import System.IO.Unsafe ( unsafePerformIO )
 import qualified Physics.Hipmunk as H
 
 import Physics.Hurl.Object
+import Physics.Hurl.Position
 import Physics.Hurl.Solid
 
 import Physics.Hurl.Internal.Resource
@@ -82,16 +83,20 @@ spaceResource e = Resource $ \(Space s) -> (H.spaceAdd s e, H.spaceRemove s e)
 -- ObjectRefs
 ------------------------------------------------------------------------------
 
-type SolidRef = H.Shape
+-- | A reference to a `Solid` in a `Space`.
+data SolidRef = SolidRef
+    { solidPos   :: Position
+    , solidProto :: Solid
+    , solidShape :: H.Shape
+    }
 
-
--- | A reference to a physical entity in a `Space`.
+-- | A reference to an `Object` in a `Space`.
 data ObjectRef f = ObjectRef
-    { objectProto     :: Object f  -- ^ the original Object
-    , objectSpace     :: Space
-    , objectBody      :: H.Body
-    , objectSolids    :: f SolidRef
-    , objectFinalizer :: IO ()
+    { objectProto     :: Object f    -- ^ the original Object
+    , objectSpace     :: Space       -- ^ the Space
+    , objectBody      :: H.Body      -- ^ the Hipmunk Body
+    , objectSolids    :: f SolidRef  -- ^ the collection of Solids
+    , objectFinalizer :: IO ()       -- ^ remove from the space
     }
 
 
@@ -118,16 +123,21 @@ createBody body = case body of
 -- ObjectRefs.
 addObject :: (Traversable f) => V2 Double -> Object f -> Space -> IO (ObjectRef f)
 addObject (V2 x y) o@(Object body solids) space = do
-    (b, makeRes) <- createBody body
-    H.position b $= H.Vector x y
+    (hBody, makeRes) <- createBody body
+    H.position hBody $= H.Vector x y
 
-    shapes <- Traversable.forM solids $ \(pos, s) -> do
-        ref <- H.newShape b (shape s) (H.Vector x y)
-        H.elasticity ref $= elasticity s
-        H.friction   ref $= friction   s
-        return ref
+    solidRefs <- Traversable.forM solids $ \(pos, s) -> do
+        -- ? maybe this version is correct:
+        --  let V2 x y = pos in H.newShape hBody (shape s) (H.Vector x y)
+        --hShape <- H.newShape hBody (shape s) (H.Vector x y)
+        hShape <- H.newShape hBody (shape s) 0
+        H.elasticity hShape $= elasticity s
+        H.friction   hShape $= friction   s
+        return $ SolidRef pos s hShape
 
-    ObjectRef o space b shapes <$> runResource (makeRes $ toList shapes) space
+    delete <- runResource (makeRes . map solidShape $ toList solidRefs) space
+
+    return $ ObjectRef o space hBody solidRefs delete
 
 
 -- | Delete all Chipmunk entities referenced by an `ObjectRef`.
