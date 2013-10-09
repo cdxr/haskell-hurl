@@ -8,7 +8,7 @@ module Physics.Hurl.Object (
     -- ** Simple Objects
     Object',
     simpleObject,
-    simpleStatic,
+    static
     ) where
 
 import Linear
@@ -37,10 +37,13 @@ data Object f = Object
 type Object' = Object Identity
 
 
+-- | @simpleObject m s@ is the an `Object'` of mass @m@ containing the
+-- single solid @s@, with a moment of inertia calculated from @m@ and @s@.
 simpleObject :: Mass -> Solid -> Object'
 simpleObject m s = Object (Body m moment) (Identity (0, s))
   where
     moment = momentForSolid s m 0
 
-simpleStatic :: Solid -> Object'
-simpleStatic s = Object Static (Identity (0, s))
+-- | @static s@ is the static `Object'` containing the single solid @s@.
+static :: Solid -> Object'
+static s = Object Static (Identity (0, s))
