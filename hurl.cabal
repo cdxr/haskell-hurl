@@ -14,11 +14,12 @@ cabal-version:       >=1.8
 library
   exposed-modules:
     Physics.Hurl
-    Physics.Hurl.Space
     Physics.Hurl.Object
-    Physics.Hurl.ObjectRef
+    Physics.Hurl.Position
     Physics.Hurl.Solid
     Physics.Hurl.Shape
+    Physics.Hurl.Space
+    Physics.Hurl.ObjectRef
     Physics.Hurl.Constraint
     Physics.Hurl.Query
     Physics.Hurl.Internal.Space
