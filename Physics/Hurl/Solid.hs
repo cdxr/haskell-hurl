@@ -16,7 +16,7 @@ import Linear.V2
 
 import qualified Physics.Hipmunk as H
 
-import Physics.Hurl.Shape ( Shape )
+import Physics.Hurl.Geometry ( Shape )
 
 
 
@@ -42,7 +42,8 @@ solid = Solid 0 0
 -- | @momentForSolid s m o@ calculates the moment of intertia for the solid 
 -- @s@ of mass @m@ at offset @o@.
 momentForSolid :: Solid -> Double -> V2 Double -> Double
-momentForSolid s m (V2 x y) = H.momentForShape m (shape s) (H.Vector x y)
+momentForSolid s m (V2 x y) = undefined
+--momentForSolid s m (V2 x y) = H.momentForShape m (shape s) (H.Vector x y)
 
 
 {-

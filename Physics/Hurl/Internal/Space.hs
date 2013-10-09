@@ -29,11 +29,12 @@ import System.IO.Unsafe ( unsafePerformIO )
 
 import qualified Physics.Hipmunk as H
 
+import Physics.Hurl.Geometry
 import Physics.Hurl.Object
-import Physics.Hurl.Position
 import Physics.Hurl.Solid
 
 import Physics.Hurl.Internal.Resource
+import Physics.Hurl.Internal.Shape
 
 
 -- | A global reference used to determine if we have called `H.initChipmunk`.
@@ -85,8 +86,7 @@ spaceResource e = Resource $ \(Space s) -> (H.spaceAdd s e, H.spaceRemove s e)
 
 -- | A reference to a `Solid` in a `Space`.
 data SolidRef = SolidRef
-    { solidPos   :: Position
-    , solidProto :: Solid
+    { solidProto :: Solid
     , solidShape :: H.Shape
     }
 
@@ -126,14 +126,11 @@ addObject (V2 x y) o@(Object body solids) space = do
     (hBody, makeRes) <- createBody body
     H.position hBody $= H.Vector x y
 
-    solidRefs <- Traversable.forM solids $ \(pos, s) -> do
-        -- ? maybe this version is correct:
-        --  let V2 x y = pos in H.newShape hBody (shape s) (H.Vector x y)
-        --hShape <- H.newShape hBody (shape s) (H.Vector x y)
-        hShape <- H.newShape hBody (shape s) 0
+    solidRefs <- Traversable.forM solids $ \s -> do
+        hShape <- makeHipmunkShape (shape s) hBody
         H.elasticity hShape $= elasticity s
         H.friction   hShape $= friction   s
-        return $ SolidRef pos s hShape
+        return $ SolidRef s hShape
 
     delete <- runResource (makeRes . map solidShape $ toList solidRefs) space
 

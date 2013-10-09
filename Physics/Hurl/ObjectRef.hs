@@ -41,9 +41,8 @@ import Data.StateVar ( StateVar, makeStateVar, get, ($=) )
 
 import qualified Physics.Hipmunk as H
 
+import Physics.Hurl.Geometry
 import Physics.Hurl.Solid
-import Physics.Hurl.Shape ( Shape )
-import Physics.Hurl.Position
 
 import Physics.Hurl.Internal.Space
 import Physics.Hurl.Internal.Utils
@@ -52,19 +51,19 @@ import Physics.Hurl.Internal.Utils
 type ObjectRef' = ObjectRef Identity
 
 
--- | Compute each pair of `Position` and `Solid` in the given ObjectRef.
-getPosSolids :: (Functor f) => ObjectRef f -> IO (f (Position, Solid))
+-- | Output each `Solid` in the ObjectRef.
+getPosSolids :: (Functor f) => ObjectRef f -> IO (f Solid)
 getPosSolids o = do
     p  <- get $ position o
-    return $ locate p <$> objectSolids o
+    return $ move p . solidProto <$> objectSolids o
   where
-    locate :: Position -> SolidRef -> (Position, Solid)
-    locate p s = (p <> solidPos s, solidProto s)
+    move :: Position -> Solid -> Solid
+    move p s = s { shape = translate p (shape s) }
 
 
--- | Compute each pair of `Position` and `Shape` in the given ObjectRef.
-getPosShapes :: (Functor f) => ObjectRef f -> IO (f (Position, Shape))
-getPosShapes = (fmap.fmap.fmap) shape . getPosSolids
+-- | Output each `Shape` in the ObjectRef.
+getPosShapes :: (Functor f) => ObjectRef f -> IO (f Shape)
+getPosShapes = (fmap.fmap) shape . getPosSolids
 
 
 position :: ObjectRef f -> StateVar Position

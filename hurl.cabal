@@ -15,13 +15,13 @@ library
   exposed-modules:
     Physics.Hurl
     Physics.Hurl.Object
-    Physics.Hurl.Position
+    Physics.Hurl.Geometry
     Physics.Hurl.Solid
-    Physics.Hurl.Shape
     Physics.Hurl.Space
     Physics.Hurl.ObjectRef
     Physics.Hurl.Constraint
     Physics.Hurl.Query
+    Physics.Hurl.Internal.Shape
     Physics.Hurl.Internal.Space
   other-modules:
     Physics.Hurl.Internal.Resource
