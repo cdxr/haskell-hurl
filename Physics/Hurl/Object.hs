@@ -1,3 +1,7 @@
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Physics.Hurl.Object (
     -- * Bodies
     Mass,
@@ -11,12 +15,13 @@ module Physics.Hurl.Object (
     static
     ) where
 
-import Data.Monoid
-
 import Data.Functor.Identity
 
-import Physics.Hurl.Geometry
 import Physics.Hurl.Solid
+
+
+-- Note: we use FlexibleInstances and UndecidableInstances to implement
+-- Show and Ord instances for `Object f` when `f Solid` implements them.
 
 
 type Mass = Double
@@ -33,6 +38,10 @@ data Object f = Object
     { body   :: Body
     , solids :: f Solid
     }
+
+deriving instance (Show (f Solid)) => Show (Object f)
+deriving instance (Eq (f Solid))   => Eq (Object f)
+deriving instance (Ord (f Solid))  => Ord (Object f)
 
 
 type Object' = Object Identity
