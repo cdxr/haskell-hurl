@@ -14,8 +14,6 @@ module Physics.Hurl.Solid
 
 import Linear.V2
 
-import qualified Physics.Hipmunk as H
-
 import Physics.Hurl.Geometry ( Shape )
 
 

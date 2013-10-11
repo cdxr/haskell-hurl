@@ -29,7 +29,6 @@ import System.IO.Unsafe ( unsafePerformIO )
 
 import qualified Physics.Hipmunk as H
 
-import Physics.Hurl.Geometry
 import Physics.Hurl.Object
 import Physics.Hurl.Solid
 

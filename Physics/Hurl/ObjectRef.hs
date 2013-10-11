@@ -34,7 +34,6 @@ import Linear.V2
 
 import Control.Applicative
 
-import Data.Monoid
 import Data.Functor.Identity
 
 import Data.StateVar ( StateVar, makeStateVar, get, ($=) )
