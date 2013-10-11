@@ -12,7 +12,6 @@ module Physics.Hurl.Object (
     -- ** Simple Objects
     Object',
     simpleObject,
-    static
     ) where
 
 import Data.Functor.Identity
@@ -27,9 +26,8 @@ import Physics.Hurl.Solid
 type Mass = Double
 type Moment = Double
 
--- | A dynamic body with a mass and moment of inertia, or a motionless
--- static body.
-data Body = Body Mass Moment | Static
+-- | A dynamic body with a mass and moment of inertia.
+data Body = Body Mass Moment
     deriving (Show, Read, Eq, Ord)
 
 
@@ -53,7 +51,3 @@ simpleObject :: Mass -> Solid -> Object'
 simpleObject m s = Object (Body m moment) $ Identity s
   where
     moment = momentForSolid s m 0
-
--- | @static s@ is the static `Object'` containing the single solid @s@.
-static :: Solid -> Object'
-static = Object Static . Identity
