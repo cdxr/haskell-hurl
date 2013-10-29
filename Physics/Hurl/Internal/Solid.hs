@@ -15,94 +15,24 @@ import Physics.Hurl.Internal.Utils
 -- TODO: consider adding a Moment multiplier to `Solid`
 
 
--- * Equations
-
-newtype Mass = Mass { getMass :: Double }
-    deriving (Num, Show, Read, Eq, Ord)
-
-instance Monoid Mass where
-    mempty = Mass 0
-    mappend (Mass a) (Mass b) = Mass (a + b)
-
-
-newtype Moment = Moment { getMoment :: Double }
-    deriving (Num, Show, Read, Eq, Ord)
-
-instance Monoid Moment where
-    mempty = Moment 0
-    mappend (Moment a) (Moment b) = Moment (a + b)
-
-
-newtype Volume = Volume { getVolume :: Double }
-    deriving (Num, Show, Read, Eq, Ord)
-
-
-newtype Density = Density { getDensity :: Double }
-    deriving (Num, Show, Read, Eq, Ord)
-
-
-
--- | @m = d * v@
-mass' :: Density -> Volume -> Mass
-mass' (Density d) (Volume v) = Mass (d * v)
-{-# INLINABLE mass' #-}
-
-
--- | @d = m / v@
-density' :: Mass -> Volume -> Density
-density' (Mass m) (Volume v) = Density (m / v)
-{-# INLINABLE density' #-}
-
-
--- | @v = m / d@
-volume' :: Mass -> Density -> Volume
-volume' (Mass m) (Density d) = Volume (m / d)
-{-# INLINABLE volume' #-}
-
-
-moment' :: Mass -> Shape -> Moment
-moment' (Mass ma) sh = Moment $ case sh of
-    Circle r off  -> ma * (quadrance off + r * r)
-    Segment _ a b -> ma * (quadrance off + r * r / 12)
-        where r = distance b a
-              off = 0.5 *^ (a ^+^ b)
-    Poly ps -> H.momentForPoly ma (toHipmunkPolygonOrder ps) 0
-        where toHipmunkPolygonOrder = reverse . map vectorFromV2
-{-# INLINABLE moment' #-}
-
-
--- * Surfaces
-
-type Friction   = Double
-type Elasticity = Double
-
-
---data Material = Material !Density !Surface
-
-
--- | The material properties of a `Solid` that determine the surface behavior
--- of collisions
-data Surface = Surface
-    { _friction   :: !Friction
-    , _elasticity :: !Elasticity
-    } deriving (Show, Eq, Ord)
-
--- | A `Surface` with `Friction`@=0.5@ and `Elasticity`@=0.5@.
-defaultSurface :: Surface
-defaultSurface = Surface 0.5 0.5
-
-
+-- * Solid
+--
 -- Invariant: The mass and density of a Solid are mutually dependent;
--- changing one will recompute the other in respect to the area of the shape.
--- Changing the shape will recompute the mass in respect to density.
+-- changing one will recompute the other in respect to volume.
+-- Changing the shape changes the volume, and recomputes the mass in respect
+-- to density and volume.
+--
+-- Mass, Density, Surface, and Shape are "public" components of the Solid.
+-- Volume and Moment are "private" cached components provided to enable sharing.
 
 -- | A collision-capable entity consisting of geometry and material
 -- properties.
+--
 data Solid = Solid
-    { solidMass    :: Mass       -- ^ mass, consistent with Density and Volume
-    , solidDensity :: Density    -- ^ density, consistent with Mass and Volume
-    , solidVolume  :: Volume     -- ^ cached volume of Shape
-    , solidMoment  :: Moment     -- ^ cached moment, dependant on Mass and Shape
+    { solidMass    :: Mass       -- ^ consistent with Density and Volume
+    , solidDensity :: Density    -- ^ consistent with Mass and Volume
+    , solidVolume  :: Volume     -- ^ cached, dependent on Shape
+    , solidMoment  :: Moment     -- ^ cached, dependent on Mass and Volume
     , solidSurface :: !Surface   -- ^ surface properties
     , solidShape   :: !Shape     -- ^ 2d geometry
     } deriving (Eq, Ord)
@@ -116,6 +46,7 @@ instance Show Solid where
         . showString " "
         . shows (solidShape s)
 
+-- ** Constructors
 
 -- | @solid s@ is a solid with shape @s@ and default values for all other
 -- properties.
@@ -129,18 +60,20 @@ solid sh = Solid ma d v mo s sh
     s  = defaultSurface
 {-# INLINABLE solid #-}
 
--- | @makeSolid d s sh@ is the solid with density @d@, surface @s@, and
+-- | @makeSolid d sf sh@ is the solid with density @d@, surface @sf@, and
 -- shape @sh@.
 makeSolid :: Density -> Surface -> Shape -> Solid
 makeSolid d s = setDensity d . setSurface s . solid
 {-# INLINABLE makeSolid #-}
 
--- | @makeSolidMass m s sh@ is the solid with mass @m@, surface @s@, and
+-- | @makeSolidMass m sf sh@ is the solid with mass @m@, surface @sf@, and
 -- shape @sh@.
 makeSolidMass :: Mass -> Surface -> Shape -> Solid
 makeSolidMass ma s = setMass ma . setSurface s . solid
 {-# INLINABLE makeSolidMass #-}
 
+
+-- * Transformations
 
 -- | @setMass ma s@ is the solid with the shape and surface properties of @s@,
 -- but with a mass of @ma@.
@@ -184,19 +117,19 @@ setShape sh = updateVolume . unsafeIsometricShape sh
 {-# INLINABLE setShape #-}
 
 
+-- | @setSurface sf s@ is the solid with the physical properties of @s@,
+-- but with surface properties @sf@.
 setSurface :: Surface -> Solid -> Solid
 setSurface surf s = s { solidSurface = surf }
 {-# INLINABLE setSurface #-}
 
 
 
--- * Unsafe Transformations
--- | Warning: these functions may leave the `Solid` in an inconsistent state.
-
+-- ** Unsafe
 
 -- | Set the value of the Mass and Density simultaneously, updating all
--- dependant values.  The caller must ensure that the Mass and Density are
--- consistent with the Volume of the Solid.
+-- dependent values.  The caller must ensure that the provided Mass and Density
+-- are consistent with the Volume of the Solid.
 unsafeUpdateMassDensity :: Mass -> Density -> Solid -> Solid
 unsafeUpdateMassDensity ma d s = s
     { solidMass    = ma
@@ -217,3 +150,80 @@ unsafeIsometricShape sh s = s
     }
 {-# INLINABLE unsafeIsometricShape #-}
 
+
+-- * Surface
+
+-- | The material properties of a `Solid` that determine the surface behavior
+-- of collisions
+data Surface = Surface
+    { _friction   :: !Friction
+    , _elasticity :: !Elasticity
+    } deriving (Show, Eq, Ord)
+
+type Friction   = Double
+type Elasticity = Double
+
+-- | A `Surface` with `Friction`@=0.5@ and `Elasticity`@=0.5@.
+defaultSurface :: Surface
+defaultSurface = Surface 0.5 0.5
+
+
+-- * Physical Properties
+
+-- ** Types
+
+newtype Mass = Mass { getMass :: Double }
+    deriving (Num, Show, Read, Eq, Ord)
+
+instance Monoid Mass where
+    mempty = Mass 0
+    mappend (Mass a) (Mass b) = Mass (a + b)
+
+
+newtype Moment = Moment { getMoment :: Double }
+    deriving (Num, Show, Read, Eq, Ord)
+
+instance Monoid Moment where
+    mempty = Moment 0
+    mappend (Moment a) (Moment b) = Moment (a + b)
+
+
+newtype Volume = Volume { getVolume :: Double }
+    deriving (Num, Show, Read, Eq, Ord)
+
+
+newtype Density = Density { getDensity :: Double }
+    deriving (Num, Show, Read, Eq, Ord)
+
+
+-- ** Equations
+
+-- | @m = d * v@
+mass' :: Density -> Volume -> Mass
+mass' (Density d) (Volume v) = Mass (d * v)
+{-# INLINABLE mass' #-}
+
+
+-- | @d = m / v@
+density' :: Mass -> Volume -> Density
+density' (Mass m) (Volume v) = Density (m / v)
+{-# INLINABLE density' #-}
+
+
+-- | @v = m / d@
+volume' :: Mass -> Density -> Volume
+volume' (Mass m) (Density d) = Volume (m / d)
+{-# INLINABLE volume' #-}
+
+
+-- | @moment' m s@ is the mass moment of inertia for an object with shape
+-- @s@ and uniformly-distributed mass @m@.
+moment' :: Mass -> Shape -> Moment
+moment' (Mass ma) sh = Moment $ case sh of
+    Circle r off  -> ma * (quadrance off + r * r)
+    Segment _ a b -> ma * (quadrance off + r * r / 12)
+        where r = distance b a
+              off = 0.5 *^ (a ^+^ b)
+    Poly ps -> H.momentForPoly ma (toHipmunkPolygonOrder ps) 0
+        where toHipmunkPolygonOrder = reverse . map vectorFromV2
+{-# INLINABLE moment' #-}

@@ -9,12 +9,8 @@ module Physics.Hurl.Solid
     makeSolidMass,
 
     -- ** Lenses
-    Mass (..),
     mass,
-
-    Density (..),
     density,
-
     shape,
 
     -- ** Surfaces
@@ -24,11 +20,14 @@ module Physics.Hurl.Solid
     surface,
 
     -- ** Observable properties
-    Moment (..),
     moment,
-
-    Volume (..),
     volume,
+
+    -- ** Types
+    Mass (..),
+    Density (..),
+    Moment (..),
+    Volume (..),
     ) where
 
 import Control.Lens
