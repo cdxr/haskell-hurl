@@ -41,6 +41,7 @@ translationM33 f rs = aux <$> f ((^._z) <$> rs^._xy)
 
 -- | A Euclidian plane isometry. When a polygon is transformed isometrically,
 -- its area does not change.
+-- See <http://en.wikipedia.org/wiki/Euclidean_plane_isometry>
 newtype Isometry a = Isometry { isometryMatrix :: M33 a }
     deriving (Eq, Ord)
 
