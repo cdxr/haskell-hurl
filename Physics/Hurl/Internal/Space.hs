@@ -1,3 +1,9 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE KindSignatures #-}
+
+
 module Physics.Hurl.Internal.Space (
     -- * Space
     Space,
@@ -6,17 +12,24 @@ module Physics.Hurl.Internal.Space (
     deleteSpace,
     stepSpace,
     -- * ObjectRefs
+    -- WARNING: The garbage collector will not automatically remove the
+    -- internal Chipmunk entities when it collects the ObjectRef. The user is
+    -- responsible for preventing memory leaks by calling deleteObject on
+    -- ObjectRefs.
     ObjectRef (..),
+    ObjectType (..),
     SolidRef (..),
-    addObject,
-    addStatics,
+    _addObject,
+    addDynamic,
+    addStatic,
     deleteObject,
     ) where
 
 import Linear.V2
 
+import Control.Lens ( view )
 import Control.Applicative
-import Control.Monad ( unless )
+import Control.Monad
 
 import Data.Monoid
 import Data.Foldable    ( Foldable, foldMap, toList )
@@ -30,11 +43,12 @@ import System.IO.Unsafe ( unsafePerformIO )
 
 import qualified Physics.Hipmunk as H
 
-import Physics.Hurl.Object
+--import Physics.Hurl.Object
 import Physics.Hurl.Solid
 
 import Physics.Hurl.Internal.Resource
 import Physics.Hurl.Internal.Shape
+import Physics.Hurl.Internal.Utils
 
 
 -- TODO: combine `createBody` and `addToSpace`
@@ -87,86 +101,94 @@ spaceResource e = Resource $ \(Space s) -> (H.spaceAdd s e, H.spaceRemove s e)
 -- ObjectRefs
 ------------------------------------------------------------------------------
 
+data ObjectType = Static | Dynamic
+    deriving (Show, Read, Eq, Ord, Bounded, Enum)
+
+
 -- | A reference to a `Solid` in a `Space`.
 data SolidRef = SolidRef
-    { solidProto :: Solid
-    , solidShape :: H.Shape
+    { solidRefProto :: Solid
+    , solidRefShape :: H.Shape
     }
 
 -- | A reference to an `Object` in a `Space`.
-data ObjectRef f = ObjectRef
-    { objectProto     :: Either (f Solid) (Object f)
-      -- ^ the original Object, or static Solids 
-    , objectSpace     :: Space       -- ^ the Space
+data ObjectRef f (t :: ObjectType) = ObjectRef
+    { objectSpace     :: Space       -- ^ the Space
     , objectBody      :: H.Body      -- ^ the Hipmunk Body
-    , objectSolids    :: f SolidRef  -- ^ the collection of Solids
+    , objectSolids    :: f SolidRef  -- ^ the collection of SolidRefs
     , objectFinalizer :: IO ()       -- ^ remove from the space
     }
 
-
--- | Create a new Hipmunk Body and a function to create a resource from
--- Shapes.
-createBody :: Maybe Body -> IO (H.Body, [H.Shape] -> Resource Space)
-createBody mbody = case mbody of
-    Nothing -> do
-        b <- H.newBody H.infinity H.infinity
-        -- apparently in Hipmunk you shouldn't add a static body to a space,
-        -- so here we ignore the body and only add the shapes
-        return (b, foldMap $ spaceResource . H.Static)
-    Just (Body ma mo) -> do
-        b <- H.newBody ma mo
-        return (b, \ss -> spaceResource b <> foldMap spaceResource ss)
+objectProto :: (Functor f) => ObjectRef f t -> f Solid
+objectProto = fmap solidRefProto . objectSolids
 
 
-addToSpace :: (Traversable f)
-           => V2 Double
-           -> Either (f Solid) (Object f)
-           -> Space
-           -> IO (ObjectRef f)
-addToSpace (V2 x y) eso space = do
-    (hBody, makeRes) <- createBody mbody
-    H.position hBody $= H.Vector x y
+-- | Convenience function: move the object to the given position, returning
+-- the same ObjectRef
+--moveTo :: V2 Double -> ObjectRef t f -> IO (ObjectRef f)
+--moveTo (V2 x y) o = o <$ (H.position (objectBody o) $= H.Vector x y)
 
-    solidRefs <- Traversable.forM solids $ \s -> do
-        hShape <- makeHipmunkShape (shape s) hBody
-        H.elasticity hShape $= elasticity s
-        H.friction   hShape $= friction   s
-        return $ SolidRef s hShape
 
-    delete <- runResource (makeRes . map solidShape $ toList solidRefs) space
+createDynamicBody :: Mass -> Moment -> IO (H.Body, [H.Shape] -> Resource Space)
+createDynamicBody (Mass ma) (Moment mo) = do
+    b <- H.newBody ma mo
+    return (b, \ss -> spaceResource b <> foldMap spaceResource ss)
 
-    return $ ObjectRef eso space hBody solidRefs delete
+
+createStaticBody :: IO (H.Body, [H.Shape] -> Resource Space)
+createStaticBody = do
+    b <- H.newBody H.infinity H.infinity
+    -- apparently in Hipmunk you shouldn't add a static body to a space,
+    -- so here we ignore the body and only add the shapes
+    return (b, foldMap $ spaceResource . H.Static)
+
+
+_addObject
+    :: (Traversable f)
+    => ObjectType
+    -> V2 Double
+    -> f Solid
+    -> Space
+    -> IO (ObjectRef f t)
+_addObject ot p solids space = do
+    (hBody, makeRes) <- case ot of
+        Static  -> createStaticBody
+        Dynamic -> createDynamicBody ma mo
+    H.position hBody $= vectorFromV2 p
+
+    solidRefs <- makeSolidRefs hBody solids
+
+    let resources = makeRes . map solidRefShape . toList $ solidRefs
+    delete <- runResource resources space
+
+    return $ ObjectRef space hBody solidRefs delete
   where
-    (mbody, solids) = case eso of
-        Left ss             -> (Nothing, ss)
-        Right (Object b ss) -> (Just b, ss)
+    (ma, mo) = foldMap ((,) <$> view mass <*> moment) . toList $ solids
 
 
--- | Add an @Object f@ to the space. The `ObjectRef` returned is a reference
--- to the newly created Chipmunk entities in the space.
---
--- WARNING: The garbage collector will not automatically remove the
--- internal Chipmunk entities when it collects the ObjectRef. The user is
--- responsible for preventing memory leaks by calling deleteObject on
--- ObjectRefs.
-addObject :: (Traversable f) => V2 Double -> Object f -> Space -> IO (ObjectRef f)
-addObject p = addToSpace p . Right
+addDynamic :: (Traversable f) =>
+    V2 Double -> f Solid -> Space -> IO (ObjectRef f Dynamic)
+addDynamic = _addObject Dynamic
 
 
 -- | Add a collection of static `Solid`s to the space. The `ObjectRef` returned
 -- is a reference to the newly created Chipmunk entities in the space.
---
--- WARNING: The garbage collector will not automatically remove the
--- internal Chipmunk entities when it collects the ObjectRef. The user is
--- responsible for preventing memory leaks by calling deleteObject on
--- ObjectRefs.
-addStatics :: (Traversable f) => V2 Double -> f Solid -> Space -> IO (ObjectRef f)
-addStatics p = addToSpace p . Left
+addStatic  :: (Traversable f) =>
+    V2 Double -> f Solid -> Space -> IO (ObjectRef f Static)
+addStatic = _addObject Static
+
+
+makeSolidRefs :: (Traversable f) => H.Body -> f Solid -> IO (f SolidRef)
+makeSolidRefs b = Traversable.mapM $ \(s :: Solid) -> do
+    hShape <- makeHipmunkShape (view shape s) b
+    H.elasticity hShape $= view (surface.elasticity) s
+    H.friction   hShape $= view (surface.friction)   s
+    return $ SolidRef s hShape
 
 
 -- | Delete all Chipmunk entities referenced by an `ObjectRef`.
 --
 -- WARNING: All operations on an ObjectRef that has been deleted are
 -- undefined.
-deleteObject :: ObjectRef f -> IO ()
+deleteObject :: ObjectRef f t -> IO ()
 deleteObject = objectFinalizer

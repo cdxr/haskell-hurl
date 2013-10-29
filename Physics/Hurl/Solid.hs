@@ -1,58 +1,109 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Physics.Hurl.Solid
 (
     -- * Solid
-    Solid (..),
+    Solid,
     solid,
-    momentForSolid,
-    {-
-    -- * Mutable Properties
-    elasticityRef,
-    frictionRef,
-    -}
+    makeSolid,
+    makeSolidMass,
+
+    -- ** Lenses
+    Mass (..),
+    mass,
+
+    Density (..),
+    density,
+
+    shape,
+
+    -- ** Surfaces
+    Surface (..),
+    friction,
+    elasticity,
+    surface,
+
+    -- ** Observable properties
+    Moment (..),
+    moment,
+
+    Volume (..),
+    volume,
     ) where
 
+import Control.Lens
 
-import Linear.V2
+import Linear
 
-import Physics.Hurl.Geometry ( Shape )
+import Physics.Hurl.Geometry
 
-
-
--- TODO
---  move elasticityRef and frictionRef to a SolidRef module
---  ? create a `Material` type
-
--- | A collision-capable entity consisting of geometry and material
--- properties.
-data Solid = Solid
-    { elasticity :: !Double
-    , friction   :: !Double
-    , shape      :: !Shape
-    } deriving (Show, Eq, Ord)
+import Physics.Hurl.Internal.Solid as I
 
 
--- | @solid s@ is the `Solid` made of the shape @s@ with zero elasticity
--- and friction.
-solid :: Shape -> Solid
-solid = Solid 0 0
+$(makeLenses ''Surface)
 
 
--- | @momentForSolid s m o@ calculates the moment of intertia for the solid 
--- @s@ of mass @m@ at offset @o@.
-momentForSolid :: Solid -> Double -> V2 Double -> Double
-momentForSolid s m (V2 x y) = undefined
---momentForSolid s m (V2 x y) = H.momentForShape m (shape s) (H.Vector x y)
+-- | @volume s@ is the material volume of @s@, determined by the area of the
+-- `Shape` of @s@.
+volume :: Solid -> Volume
+volume = solidVolume
+{-# INLINABLE volume #-}
 
 
-{-
--- | The elasticity of the solid in the range 0 to 1.
-elasticityRef :: SolidRef -> StateVar Double
-elasticityRef = H.elasticity
+-- | @moment s@ is the mass moment of inertia of @s@, which is determined by 
+-- the Mass and Shape of @s@.
+moment :: Solid -> Moment
+moment = solidMoment
+{-# INLINABLE moment #-}
 
 
--- | The friction coefficient of the shape according to the Coulumb
--- friction model. The amount of applied friction is the product of the
--- friction of both solids.
-frictionRef :: SolidRef -> StateVar Double
-frictionRef = H.friction
--}
+-- | A lens to the `Mass` of a Solid. Modifying the target of `mass`
+-- also modifies the target of `density` relative to `volume`.
+--
+-- @
+-- view mass s = mass' (view density s) (volume s)
+-- @
+--
+mass :: Lens' Solid Mass
+mass = lens solidMass $ flip setMass
+{-# INLINABLE mass #-}
+
+-- | A lens to the `Density` of a Solid. Modifying the target of `density`
+-- also modifies the target of `mass` relative to `volume`.
+--
+-- @
+-- view density s = density' (view mass s) (volume s)
+-- @
+--
+density :: Lens' Solid Density
+density = lens solidDensity $ flip setDensity
+{-# INLINABLE density #-}
+
+-- | A lens to the `Surface` of a Solid.
+--
+-- `surface` is orthogonal to every other property of a `Solid`.
+surface :: Lens' Solid Surface
+surface = lens solidSurface $ flip setSurface
+{-# INLINABLE surface #-}
+
+-- | A lens to the `Shape` of a `Solid`.
+--
+-- If modifying the target of `shape` results in a new value of `volume`,
+-- the target of `mass` will also be modified relative to the value of
+-- `density`.
+shape :: Lens' Solid Shape
+shape = lens solidShape $ flip setShape
+{-# INLINABLE shape #-}
+
+
+
+-- | @translate v s@ is the Solid @s@ translated by the vector @v@.
+--
+-- The following equality holds, but `translate` is more efficient:
+--
+-- @
+-- translate v = over shape (translateShape v)
+-- @
+--
+translate :: V2 Double -> Solid -> Solid
+translate v s = unsafeIsometricShape (translateShape v $ view shape s) s

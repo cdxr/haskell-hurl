@@ -6,7 +6,8 @@ module Physics.Hurl.Space (
     I.stepSpace,
 
     -- ** Objects
-    addObject,
+    addDynamic,
+    addStatic,
     deleteObject,
 
     -- ** Properties

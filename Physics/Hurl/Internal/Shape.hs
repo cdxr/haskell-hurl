@@ -1,9 +1,15 @@
 module Physics.Hurl.Internal.Shape where
 
+import Linear.V2
+
 import qualified Physics.Hipmunk as H
 
 import Physics.Hurl.Geometry
 import Physics.Hurl.Internal.Utils
+
+
+hipmunkPolygon :: [V2 Double] -> H.ShapeType
+hipmunkPolygon = H.Polygon . map vectorFromV2
 
 
 -- | Create a Hipmunk `H.Shape` from a Hurl `Shape` and a Hipmunk `H.Body`.
@@ -16,5 +22,5 @@ makeHipmunkShape s b = H.newShape b shapeType position
     shapeType = case s of
         Circle radius _ -> H.Circle radius
         Segment th p q  -> H.LineSegment (vectorFromV2 p) (vectorFromV2 q) th
-        Poly ps         -> H.Polygon (map vectorFromV2 ps)
+        Poly ps         -> hipmunkPolygon ps
 

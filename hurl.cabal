@@ -14,7 +14,6 @@ cabal-version:       >=1.8
 library
   exposed-modules:
     Physics.Hurl
-    Physics.Hurl.Object
     Physics.Hurl.Geometry
     Physics.Hurl.Solid
     Physics.Hurl.Space
@@ -36,3 +35,12 @@ library
     transformers == 0.3.*,
     StateVar     == 1.0.*,
     Hipmunk      == 5.2.*
+
+Test-Suite properties
+    type:           exitcode-stdio-1.0
+    main-is:        properties.hs
+    hs-source-dirs: test, .
+    build-depends:  base,
+                    QuickCheck        >=2.6,
+                    test-framework    >=0.8,
+                    test-framework-th >=0.2

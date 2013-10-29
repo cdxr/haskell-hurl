@@ -1,13 +1,14 @@
+{-# LANGUAGE DataKinds #-}
+
 module Physics.Hurl.ObjectRef
 (
-
     ObjectRef,
     ObjectRef',
     SolidRef,
 
     -- * Inspection
-    getPosSolids,
-    getPosShapes,
+    viewSolids,
+    viewShapes,
 
     -- * Applying Forces
     Force,
@@ -32,6 +33,7 @@ where
 
 import Linear.V2
 
+import Control.Lens
 import Control.Applicative
 
 import Data.Functor.Identity
@@ -51,21 +53,18 @@ type ObjectRef' = ObjectRef Identity
 
 
 -- | Output each `Solid` in the ObjectRef.
-getPosSolids :: (Functor f) => ObjectRef f -> IO (f Solid)
-getPosSolids o = do
+viewSolids :: (Functor f) => ObjectRef f t -> IO (f Solid)
+viewSolids o = do
     p  <- get $ position o
-    return $ move p . solidProto <$> objectSolids o
-  where
-    move :: Position -> Solid -> Solid
-    move p s = s { shape = translate p (shape s) }
+    return $ (shape %~ moveShape p) . solidRefProto <$> objectSolids o
 
 
 -- | Output each `Shape` in the ObjectRef.
-getPosShapes :: (Functor f) => ObjectRef f -> IO (f Shape)
-getPosShapes = (fmap.fmap) shape . getPosSolids
+viewShapes :: (Functor f) => ObjectRef f t -> IO (f Shape)
+viewShapes = (fmap.fmap) (view shape) . viewSolids
 
 
-position :: ObjectRef f -> StateVar Position
+position :: ObjectRef f t -> StateVar Position
 position o = makeStateVar g s
   where
     g = Pos <$> get (posVar o) <*> get (angleVar o)
@@ -73,41 +72,41 @@ position o = makeStateVar g s
         posVar   o $= p
         angleVar o $= a
 
-    posVar :: ObjectRef f -> StateVar (V2 Double)
+    posVar :: ObjectRef f t -> StateVar (V2 Double)
     posVar = varVectorToV2 . H.position . objectBody
 
-    angleVar :: ObjectRef f -> StateVar Double
+    angleVar :: ObjectRef f t -> StateVar Double
     angleVar = H.angle . objectBody
 
 
-velocity :: ObjectRef f -> StateVar (V2 Double)
+velocity :: ObjectRef f Dynamic -> StateVar (V2 Double)
 velocity = varVectorToV2 . H.velocity . objectBody
 
-angVel :: ObjectRef f -> StateVar Double
+angVel :: ObjectRef f Dynamic -> StateVar Double
 angVel = H.angVel . objectBody
 
 
-maxVelocity :: ObjectRef f -> StateVar Double
+maxVelocity :: ObjectRef f Dynamic -> StateVar Double
 maxVelocity = H.maxVelocity . objectBody
 
-maxAngVel :: ObjectRef f -> StateVar Double
+maxAngVel :: ObjectRef f Dynamic -> StateVar Double
 maxAngVel = H.maxAngVel . objectBody
 
 
 type Force = Double
 
-force :: ObjectRef f -> StateVar (V2 Force)
+force :: ObjectRef f Dynamic -> StateVar (V2 Force)
 force = varVectorToV2 . H.force . objectBody
 
-torque :: ObjectRef f -> StateVar Force
+torque :: ObjectRef f Dynamic -> StateVar Force
 torque = H.torque . objectBody
 
 
-applyForce :: V2 Double -> V2 Force -> ObjectRef f -> IO ()
+applyForce :: V2 Double -> V2 Force -> ObjectRef f Dynamic -> IO ()
 applyForce p v o = H.applyForce (objectBody o) (vectorFromV2 p) (vectorFromV2 v)
 
-applyOnlyForce :: V2 Double -> V2 Force -> ObjectRef f -> IO ()
+applyOnlyForce :: V2 Double -> V2 Force -> ObjectRef f Dynamic -> IO ()
 applyOnlyForce p v o = H.applyOnlyForce (objectBody o) (vectorFromV2 p) (vectorFromV2 v)
 
-applyImpulse :: V2 Double -> V2 Force -> ObjectRef f -> IO ()
+applyImpulse :: V2 Double -> V2 Force -> ObjectRef f Dynamic -> IO ()
 applyImpulse p v o = H.applyImpulse (objectBody o) (vectorFromV2 p) (vectorFromV2 v)

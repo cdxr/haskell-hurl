@@ -12,9 +12,10 @@ import Physics.Hurl.Internal.Space
 
 -- | @querySolid p s@ determines if the solid @s@ contains the point @p@.
 querySolid :: V2 Double -> SolidRef -> IO Bool
-querySolid (V2 x y) s = H.shapePointQuery (solidShape s) (H.Vector x y)
+querySolid (V2 x y) s = H.shapePointQuery (solidRefShape s) (H.Vector x y)
+
 
 -- | @queryObject p o@ computes a list of all solids in @o@ that contain the 
 -- point @p@.
-queryObject :: (Foldable f) => V2 Double -> ObjectRef f -> IO [SolidRef]
+queryObject :: (Foldable f) => V2 Double -> ObjectRef f t -> IO [SolidRef]
 queryObject p = filterM (querySolid p) . toList . objectSolids

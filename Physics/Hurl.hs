@@ -1,5 +1,5 @@
 module Physics.Hurl (
-    module Physics.Hurl.Object,
+    --module Physics.Hurl.Object,
     module Physics.Hurl.Geometry,
     module Physics.Hurl.Solid,
     module Physics.Hurl.Space,
@@ -9,7 +9,7 @@ module Physics.Hurl (
     ) where
 
 
-import Physics.Hurl.Object
+--import Physics.Hurl.Object
 import Physics.Hurl.Geometry
 import Physics.Hurl.Solid
 import Physics.Hurl.Space
