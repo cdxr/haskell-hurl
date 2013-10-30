@@ -45,19 +45,23 @@ translationM33 f rs = aux <$> f ((^._z) <$> rs^._xy)
 newtype Isometry a = Isometry { isometryMatrix :: M33 a }
     deriving (Eq, Ord)
 
+instance (Show a) => Show (Isometry a) where
+    showsPrec p i = showParen (p > 10) $
+        showString "unsafeFromMatrix " . shows (isometryMatrix i)
+
 
 isoTranslation :: Isometry a -> V2 a
 isoTranslation = view translationM33 . isometryMatrix
 
 
 isoRotation :: (RealFloat a) => Isometry a -> a
-isoRotation (Isometry m) = atan2 cost (- nsint)
+isoRotation (Isometry m) = atan2 (-sint) cost
   where
-    V3 cost nsint _ = m^._x
+    V3 cost sint _ = m^._x
 
 
 isoReflectY :: (Num a, Eq a) => Isometry a -> Bool
-isoReflectY (Isometry m) = signum (m^._x._x) == signum (m^._y._y)
+isoReflectY (Isometry m) = signum (m^._x._x) /= signum (m^._y._y)
 
 
 -- | Create an `Isometry` from a three-by-three matrix. This only creates

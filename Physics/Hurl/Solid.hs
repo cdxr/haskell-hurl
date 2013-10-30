@@ -12,16 +12,16 @@ module Physics.Hurl.Solid
     mass,
     density,
     shape,
-
-    -- ** Surfaces
-    Surface (..),
-    friction,
-    elasticity,
     surface,
 
     -- ** Observable properties
     moment,
     volume,
+
+    -- ** Surfaces
+    Surface (..),
+    friction,
+    elasticity,
 
     -- ** Types
     Mass (..),

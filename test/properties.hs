@@ -1,4 +1,3 @@
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -23,6 +22,7 @@ import qualified Data.Foldable as F
 import Data.Traversable ( traverse )
 
 import Data.AEq
+import Data.Fixed
 
 import Control.Lens  ( view )
 import Linear hiding ( rotate )
@@ -33,8 +33,6 @@ import Physics.Hurl.Geometry.Isometry
 --import Physics.Hurl.Geometry
 import Physics.Hurl.Internal.Solid
 
-
---runTests = $quickCheckAll
 
 main = $defaultMainGenerator
 
@@ -59,16 +57,15 @@ instance (AEq a) => AEq (V3 a) where
     a ~== b = F.and $ (~==) <$> a <*> b
 
 
-deriving instance Show (Isometry Double)
-
-
 instance Arbitrary (Isometry Double) where
     arbitrary = mconcat <$> sequence
         [ translate <$> arbitrary
         , rotate    <$> arbitrary
         , elements [mempty, reflectY]
         ]
-    shrink = map Isometry . (traverse.traverse) shrinkRealFrac . isometryMatrix
+    shrink = map unsafeFromMatrix
+           . (traverse.traverse) shrinkRealFrac
+           . isometryMatrix
 
 instance AEq (Isometry Double) where
     i ~== j = and
@@ -114,6 +111,13 @@ a ~==? b = printTestCase s $ a ~== b
 
 infix 4 ==?
 infix 4 ~==?
+
+
+-- | Compare two angles for equality, measured in radians
+angleEq :: Double -> Double -> Property
+angleEq t u = mod' t tau ~==? mod' u tau
+  where
+    tau = pi * 2
 
 ------------------------------------------------------------------------------
 -- Physics.Hurl.Geometry.Isometry
@@ -179,7 +183,11 @@ prop_iso_translation v =
 
 prop_iso_rotation :: Double -> Property
 prop_iso_rotation t =
-    t ~==? isoRotation (rotate t)
+    t `angleEq` isoRotation (rotate t)
+
+prop_iso_full_rotate :: Double -> Property
+prop_iso_full_rotate t =
+    mempty ~==? rotate t <> rotate (2*pi - t)
 
 prop_iso_reflectY :: Bool -> Property
 prop_iso_reflectY b =

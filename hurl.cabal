@@ -15,11 +15,13 @@ library
   exposed-modules:
     Physics.Hurl
     Physics.Hurl.Geometry
+    Physics.Hurl.Geometry.Isometry
     Physics.Hurl.Solid
     Physics.Hurl.Space
     Physics.Hurl.ObjectRef
     Physics.Hurl.Constraint
     Physics.Hurl.Query
+    Physics.Hurl.Internal.Solid
     Physics.Hurl.Internal.Shape
     Physics.Hurl.Internal.Space
   other-modules:
@@ -39,9 +41,13 @@ library
 Test-Suite properties
     type:           exitcode-stdio-1.0
     main-is:        properties.hs
-    hs-source-dirs: test, .
+    ghc-options:    -w
+    hs-source-dirs: test
     build-depends:  base,
                     hurl,
-                    QuickCheck        >=2.6,
-                    test-framework    >=0.8,
-                    test-framework-th >=0.2
+                    linear,
+                    lens,
+                    ieee754           == 0.7.*,
+                    QuickCheck        == 2.6.*,
+                    test-framework-th == 0.2.*,
+                    test-framework-quickcheck2 >= 0.3
