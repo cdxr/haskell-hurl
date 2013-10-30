@@ -44,10 +44,10 @@ Test-Suite properties
     ghc-options:    -w
     hs-source-dirs: test
     build-depends:  base,
-                    hurl,
                     linear,
                     lens,
-                    ieee754           == 0.7.*,
-                    QuickCheck        == 2.6.*,
-                    test-framework-th == 0.2.*,
-                    test-framework-quickcheck2 >= 0.3
+                    hurl,
+                    ieee754          == 0.7.*,
+                    QuickCheck       == 2.6.*,
+                    tasty-th         == 0.1.*,
+                    tasty-quickcheck == 0.3.*

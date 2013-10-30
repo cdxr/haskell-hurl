@@ -10,9 +10,8 @@
 module Main where
 
 import Test.QuickCheck
---import Test.QuickCheck.All
-import Test.Framework.Providers.QuickCheck2
-import Test.Framework.TH
+import Test.Tasty.QuickCheck
+import Test.Tasty.TH
 
 import Control.Applicative
 import Data.Monoid
