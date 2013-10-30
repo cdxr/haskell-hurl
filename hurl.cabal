@@ -18,7 +18,7 @@ library
     Physics.Hurl.Geometry.Isometry
     Physics.Hurl.Solid
     Physics.Hurl.Space
-    Physics.Hurl.ObjectRef
+    Physics.Hurl.Object
     Physics.Hurl.Constraint
     Physics.Hurl.Query
     Physics.Hurl.Internal.Solid

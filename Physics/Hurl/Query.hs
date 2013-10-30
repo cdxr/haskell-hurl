@@ -17,5 +17,5 @@ querySolid (V2 x y) s = H.shapePointQuery (solidRefShape s) (H.Vector x y)
 
 -- | @queryObject p o@ computes a list of all solids in @o@ that contain the 
 -- point @p@.
-queryObject :: (Foldable f) => V2 Double -> ObjectRef f t -> IO [SolidRef]
+queryObject :: (Foldable f) => V2 Double -> Object f -> IO [SolidRef]
 queryObject p = filterM (querySolid p) . toList . objectSolids

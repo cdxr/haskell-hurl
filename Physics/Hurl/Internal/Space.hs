@@ -1,9 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE KindSignatures #-}
-
-
 module Physics.Hurl.Internal.Space (
     -- * Space
     Space,
@@ -11,15 +5,24 @@ module Physics.Hurl.Internal.Space (
     newSpace,
     deleteSpace,
     stepSpace,
-    -- * ObjectRefs
+
+    -- * Objects
     -- WARNING: The garbage collector will not automatically remove the
-    -- internal Chipmunk entities when it collects the ObjectRef. The user is
+    -- internal Chipmunk entities when it collects the Object. The user is
     -- responsible for preventing memory leaks by calling deleteObject on
-    -- ObjectRefs.
-    ObjectRef (..),
-    ObjectType (..),
+    -- Objects.
+    Object   (..),
+    objectProto,
     SolidRef (..),
-    _addObject,
+    
+    -- ** Mobility
+    Mobility (..),
+    DynamicObject (..),
+    dynamicObject,
+    dynamicBody,
+
+    -- ** Creation and Deletion
+    addObject,
     addDynamic,
     addStatic,
     deleteObject,
@@ -27,7 +30,7 @@ module Physics.Hurl.Internal.Space (
 
 import Linear.V2
 
-import Control.Lens ( view )
+import Control.Lens ( view, Prism', prism' )
 import Control.Applicative
 import Control.Monad
 
@@ -98,12 +101,8 @@ spaceResource e = Resource $ \(Space s) -> (H.spaceAdd s e, H.spaceRemove s e)
 
 
 ------------------------------------------------------------------------------
--- ObjectRefs
+-- Objects
 ------------------------------------------------------------------------------
-
-data ObjectType = Static | Dynamic
-    deriving (Show, Read, Eq, Ord, Bounded, Enum)
-
 
 -- | A reference to a `Solid` in a `Space`.
 data SolidRef = SolidRef
@@ -111,22 +110,47 @@ data SolidRef = SolidRef
     , solidRefShape :: H.Shape
     }
 
--- | A reference to an `Object` in a `Space`.
-data ObjectRef f (t :: ObjectType) = ObjectRef
+makeSolidRef :: H.Body -> Solid -> IO SolidRef
+makeSolidRef b s = do
+    hShape <- makeHipmunkShape (view shape s) b
+    H.elasticity hShape $= view (surface.elasticity) s
+    H.friction   hShape $= view (surface.friction)   s
+    return $ SolidRef s hShape
+
+
+-- | A reference to a collection of `Solid`s in a `Space`.
+data Object f = Object
     { objectSpace     :: Space       -- ^ the Space
     , objectBody      :: H.Body      -- ^ the Hipmunk Body
     , objectSolids    :: f SolidRef  -- ^ the collection of SolidRefs
+    , objectMobility  :: Mobility    -- ^ the mobility type
     , objectFinalizer :: IO ()       -- ^ remove from the space
     }
 
-objectProto :: (Functor f) => ObjectRef f t -> f Solid
+-- TODO: maybe it is better to store this rather than recreate it?
+
+-- @objectProto o@ is the original container of `Solid`s that produced the
+-- `Object`.
+objectProto :: (Functor f) => Object f -> f Solid
 objectProto = fmap solidRefProto . objectSolids
 
 
--- | Convenience function: move the object to the given position, returning
--- the same ObjectRef
---moveTo :: V2 Double -> ObjectRef t f -> IO (ObjectRef f)
---moveTo (V2 x y) o = o <$ (H.position (objectBody o) $= H.Vector x y)
+data Mobility = Static | Dynamic
+    deriving (Show, Eq, Ord)
+
+
+-- | A wrapper for an `Object` that is known to be dynamic, i.e. is mobile
+-- and has physical properties such as mass and moment.
+newtype DynamicObject f = DynamicObject { unDynamicObject :: Object f }
+
+dynamicObject :: Prism' (Object f) (DynamicObject f)
+dynamicObject = prism' unDynamicObject $ \o ->
+    case objectMobility o of
+        Dynamic -> Just $ DynamicObject o
+        Static  -> Nothing
+
+dynamicBody :: DynamicObject f -> H.Body
+dynamicBody = objectBody . unDynamicObject
 
 
 createDynamicBody :: Mass -> Moment -> IO (H.Body, [H.Shape] -> Resource Space)
@@ -143,52 +167,52 @@ createStaticBody = do
     return (b, foldMap $ spaceResource . H.Static)
 
 
-_addObject
+-- | Add a collection of `Solid`s to the space at the given position.
+-- If the given `Mobility` is `Dynamic`, the resulting `Object` has a
+-- mobile body with physical properties, and if it is `Static` the `Object`
+-- is immobile.
+-- 
+-- The `Object` returned is a reference to the newly created Chipmunk entities
+-- in the space.
+--
+addObject
     :: (Traversable f)
-    => ObjectType
+    => Mobility
     -> V2 Double
     -> f Solid
     -> Space
-    -> IO (ObjectRef f t)
-_addObject ot p solids space = do
-    (hBody, makeRes) <- case ot of
+    -> IO (Object f)
+addObject mob p solids space = do
+    (hBody, makeRes) <- case mob of
         Static  -> createStaticBody
         Dynamic -> createDynamicBody ma mo
     H.position hBody $= vectorFromV2 p
 
-    solidRefs <- makeSolidRefs hBody solids
+    solidRefs <- Traversable.mapM (makeSolidRef hBody) solids
 
     let resources = makeRes . map solidRefShape . toList $ solidRefs
     delete <- runResource resources space
 
-    return $ ObjectRef space hBody solidRefs delete
+    return $ Object space hBody solidRefs mob delete
   where
     (ma, mo) = foldMap ((,) <$> view mass <*> moment) . toList $ solids
 
 
-addDynamic :: (Traversable f) =>
-    V2 Double -> f Solid -> Space -> IO (ObjectRef f Dynamic)
-addDynamic = _addObject Dynamic
+-- | Creates an `Object` like @addObject Dynamic@, but returning that
+-- `Object` wrapped in a `DynamicObject`.
+addDynamic :: (Traversable f) => V2 Double -> f Solid -> Space -> IO (DynamicObject f)
+addDynamic p ss = fmap DynamicObject . addObject Dynamic p ss
 
 
--- | Add a collection of static `Solid`s to the space. The `ObjectRef` returned
--- is a reference to the newly created Chipmunk entities in the space.
-addStatic  :: (Traversable f) =>
-    V2 Double -> f Solid -> Space -> IO (ObjectRef f Static)
-addStatic = _addObject Static
+-- | A synonym for @addObject Static@
+addStatic :: (Traversable f) => V2 Double -> f Solid -> Space -> IO (Object f)
+addStatic = addObject Static
 
 
-makeSolidRefs :: (Traversable f) => H.Body -> f Solid -> IO (f SolidRef)
-makeSolidRefs b = Traversable.mapM $ \(s :: Solid) -> do
-    hShape <- makeHipmunkShape (view shape s) b
-    H.elasticity hShape $= view (surface.elasticity) s
-    H.friction   hShape $= view (surface.friction)   s
-    return $ SolidRef s hShape
 
-
--- | Delete all Chipmunk entities referenced by an `ObjectRef`.
+-- | Delete all Chipmunk entities referenced by an `Object`.
 --
--- WARNING: All operations on an ObjectRef that has been deleted are
+-- WARNING: All operations on an Object that has been deleted are
 -- undefined.
-deleteObject :: ObjectRef f t -> IO ()
+deleteObject :: Object f -> IO ()
 deleteObject = objectFinalizer

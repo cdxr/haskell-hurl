@@ -14,7 +14,7 @@ newtype Constraint = Constraint (IO ())
 
 -- | @pinObjects p a b@ creates a `Pin` between objects @a@ and @b@ at
 -- global position @p@.
-pinObjects :: V2 Double -> ObjectRef f t -> ObjectRef g s -> IO Constraint
+pinObjects :: V2 Double -> Object f -> Object g -> IO Constraint
 pinObjects v ao bo = do
     c <- H.newConstraint a b =<< makeHipmunkPin
     H.spaceAdd space c
@@ -30,7 +30,7 @@ pinObjects v ao bo = do
 type BiasCoef = Double
 type MaxForce = Double
 
-pivotObjects :: BiasCoef -> MaxForce -> V2 Double -> ObjectRef f t -> ObjectRef g s -> IO Constraint
+pivotObjects :: BiasCoef -> MaxForce -> V2 Double -> Object f -> Object g -> IO Constraint
 pivotObjects bc mf (V2 x y) ao bo = do
     c <- H.newConstraint a b $ H.Pivot1 pos
     H.setBiasCoefC bc c
