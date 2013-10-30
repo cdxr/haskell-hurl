@@ -1,4 +1,23 @@
-module Physics.Hurl.Geometry where
+module Physics.Hurl.Geometry
+(
+    -- * Shape
+    Shape (..),
+    validShape,
+    area,
+    transformShape,
+    translateShape,
+    rectangle,
+
+    -- * Position
+    Position(..),
+    positionIso,
+    moveShape,
+
+    module Physics.Hurl.Geometry.Isometry,
+
+    -- * Linear Re-exports
+    V2 (..),
+) where
 
 import Control.Applicative
 import Data.Monoid
