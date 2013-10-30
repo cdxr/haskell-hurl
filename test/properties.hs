@@ -171,11 +171,6 @@ prop_iso_rotate_inverse :: Double -> Property
 prop_iso_rotate_inverse t =
     isIsoId $ rotate t <> rotate (negate t)
 
-prop_iso_reflect_inverse :: Property
-prop_iso_reflect_inverse =
-    isIsoId $ reflectY <> reflectY
-
-
 prop_iso_translation :: V -> Property
 prop_iso_translation v =
     v ==? isoTranslation (translate v)
@@ -188,9 +183,17 @@ prop_iso_full_rotate :: Double -> Property
 prop_iso_full_rotate t =
     mempty ~==? rotate t <> rotate (2*pi - t)
 
-prop_iso_reflectY :: Bool -> Property
-prop_iso_reflectY b =
-    b ==? isoReflectY (if b then reflectY else mempty)
+
+prop_iso_reflect_inverse :: Property
+prop_iso_reflect_inverse = once $
+    isIsoId $ reflectY <> reflectY
+
+prop_iso_reflectY :: Property
+prop_iso_reflectY = once $ conjoin
+    [ True  ==? isoReflectY (reflectY :: IsoD)
+    , False ==? isoReflectY (mempty :: IsoD)
+    ]
+    
 
 
 ------------------------------------------------------------------------------

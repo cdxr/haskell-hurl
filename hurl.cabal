@@ -51,3 +51,15 @@ Test-Suite properties
                     QuickCheck       == 2.6.*,
                     tasty-th         == 0.1.*,
                     tasty-quickcheck == 0.3.*
+
+
+Test-Suite hunit
+    type:           exitcode-stdio-1.0
+    main-is:        hunit.hs
+    ghc-options:    -w
+    hs-source-dirs: test
+    build-depends:  base,
+                    hurl,
+                    HUnit       == 1.2.*,
+                    tasty-th    == 0.1.*,
+                    tasty-hunit == 0.2.*
