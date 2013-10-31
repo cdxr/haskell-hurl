@@ -36,7 +36,7 @@ library
     exceptions   == 0.3.*,
     transformers == 0.3.*,
     StateVar     == 1.0.*,
-    Hipmunk      >= 5.2.0.11
+    Hipmunk      == 5.2.0.12
 
 Test-Suite properties
     type:           exitcode-stdio-1.0
