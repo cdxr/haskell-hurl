@@ -171,18 +171,30 @@ dynamicBody :: DynamicObject f -> H.Body
 dynamicBody = objectBody . unDynamicObject
 
 
-createDynamicBody :: Mass -> Moment -> IO (H.Body, [H.Shape] -> Resource Space)
-createDynamicBody (Mass ma) (Moment mo) = do
-    b <- H.newBody ma mo
-    return (b, \ss -> spaceResource b <> foldMap spaceResource ss)
+createHipmunkEntities
+    :: (Traversable f)
+    => Mobility
+    -> f Solid
+    -> IO (H.Body, f SolidRef, Resource Space)
+createHipmunkEntities mob solids = do
+    hBody <- case mob of
+        Static  -> H.newBody H.infinity H.infinity
+        Dynamic -> H.newBody ma mo
 
+    solidRefs <- Traversable.mapM (makeSolidRef hBody) solids
+    let hShapes = map solidRefShape . toList $ solidRefs
 
-createStaticBody :: IO (H.Body, [H.Shape] -> Resource Space)
-createStaticBody = do
-    b <- H.newBody H.infinity H.infinity
-    -- apparently in Hipmunk you shouldn't add a static body to a space,
-    -- so here we ignore the body and only add the shapes
-    return (b, foldMap $ spaceResource . H.Static)
+    let makeRes = case mob of
+            Dynamic -> mappend (spaceResource hBody) . foldMap spaceResource
+            -- Hipmunk static shapes must be wrapped in `H.Static`
+            -- The body they are attached to *is not* added
+            Static  -> foldMap (spaceResource . H.Static)
+
+    let resource = makeRes hShapes
+
+    return (hBody, solidRefs, resource)
+  where
+    Body (Mass ma) (Moment mo) = foldMap solidBody solids
 
 
 -- | Add a collection of `Solid`s to the space at the given position.
@@ -201,19 +213,13 @@ addObject
     -> Space
     -> IO (Object f)
 addObject mob p solids space = do
-    (hBody, makeRes) <- case mob of
-        Static  -> createStaticBody
-        Dynamic -> createDynamicBody ma mo
+    (hBody, solidRefs, resources) <- createHipmunkEntities mob solids 
+
     H.position hBody $= vectorFromV2 p
 
-    solidRefs <- Traversable.mapM (makeSolidRef hBody) solids
-
-    let resources = makeRes . map solidRefShape . toList $ solidRefs
     delete <- runResource resources space
 
     return $ Object space hBody solidRefs mob delete
-  where
-    (ma, mo) = foldMap ((,) <$> view mass <*> moment) . toList $ solids
 
 
 -- | Creates an `Object` like @addObject Dynamic@, but returning that

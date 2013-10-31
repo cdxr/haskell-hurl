@@ -28,11 +28,18 @@ module Physics.Hurl.Solid
     Density (..),
     Moment (..),
     Volume (..),
+
+    -- * Body
+    Body(..),
+    solidBody,
+
     ) where
 
 import Control.Lens
-
 import Linear
+
+import Control.Applicative
+import Data.Monoid
 
 import Physics.Hurl.Geometry
 
@@ -106,3 +113,18 @@ shape = lens solidShape $ flip setShape
 --
 translate :: V2 Double -> Solid -> Solid
 translate v s = unsafeIsometricShape (translateShape v $ view shape s) s
+
+
+
+-- | A physical entity with mass and mass moment of inertia.
+data Body = Body !Mass !Moment
+    deriving (Show, Eq, Ord)
+
+instance Monoid Body where
+    mempty = Body mempty mempty
+    mappend (Body ma mo) (Body ma' mo') = Body (ma <> ma') (mo <> mo')
+
+-- | @solidBody s@ is the `Body` determined by the properties of @s@.
+solidBody :: Solid -> Body
+solidBody = Body <$> view mass <*> moment
+
