@@ -6,6 +6,10 @@ module Physics.Hurl.Internal.Space (
     deleteSpace,
     stepSpace,
 
+    -- * Hipmunk Initialization
+    initializeChipmunk,
+    debugChipmunkInitialized,
+
     -- * Objects
     -- WARNING: The garbage collector will not automatically remove the
     -- internal Chipmunk entities when it collects the Object. The user is
@@ -65,6 +69,23 @@ _chipmunkInitialized :: MVar Bool
 _chipmunkInitialized = unsafePerformIO $ newMVar False
 {-# NOINLINE _chipmunkInitialized #-}
 
+-- | Initialize Chipmunk. This may be safely called multiple times.
+initializeChipmunk :: IO ()
+initializeChipmunk = 
+    -- check the global MVar to see if Chipmunk has been initialized
+    modifyMVarMasked_ _chipmunkInitialized $ \b -> do
+        unless b H.initChipmunk
+        return True
+
+-- | Check to see if Chipmunk has been initialized.
+--
+-- This operation is subject to race conditions. Specifically, it may
+-- result in false negatives in the presence of concurrency.
+--
+debugChipmunkInitialized :: IO Bool
+debugChipmunkInitialized =
+    modifyMVar _chipmunkInitialized $ \b -> return (b, b)
+
 
 -- | A `Space` is a mutable container of bodies, shapes, and constraints
 -- that simulates their physical interactions.
@@ -75,10 +96,7 @@ newtype Space = Space { hipmunkSpace :: H.Space }
 -- | Create a new empty `Space`.
 newSpace :: IO Space
 newSpace = do
-    -- check the global MVar to see if Chipmunk has been initialized
-    modifyMVar_ _chipmunkInitialized $ \b -> do
-        unless b H.initChipmunk
-        return True
+    initializeChipmunk
     Space <$> H.newSpace
 
 
