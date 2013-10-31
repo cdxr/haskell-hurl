@@ -1,5 +1,11 @@
 TODO
 
+Space API
+    allow user to supply custom Body
+    eliminate redundancies
+      - position
+      - mobility
+
 add `Group` functionality automatically to composite objects
 add `Empty` type isomorphic to `Const ()` for representing shapeless objects
 add `[Constraint]` parameter to `ObjectRef`
