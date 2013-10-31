@@ -1,6 +1,10 @@
 TODO
 
-add `Empty` type isomorphic to `Const ()` for representing shapeless objections
+add `Group` functionality automatically to composite objects
+add `Empty` type isomorphic to `Const ()` for representing shapeless objects
 add `[Constraint]` parameter to `ObjectRef`
   -- maybe deallocate Constraints when an ObjectRef is removed?
-add `Group` functionality automatically to composite objects
+
+track down all possible segfaults exposed by the Hipmunk library and replace them with exceptions
+
+write properties that verify the lens laws for all lenses in Solid.hs

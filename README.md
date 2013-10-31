@@ -2,35 +2,39 @@
 
 `hurl` is a Haskell high-level interface to the Chipmunk physics library in
 early development. It is implemented in terms of `Hipmunk`, an excellent but
-straightforward binding to Chipmunk. `hurl` intends to be more convenient and
-idiomatic than `Hipmunk`.
+straightforward binding to Chipmunk. `hurl` is designed to provide a more
+idiomatic interface than `Hipmunk`.
 
-## planned features
+### advantages over Hipmunk
 
-### use of pure data structures
+#### greater composability
 
 In `Hipmunk`, you create entities in IO, then modify their properties using
 StateVars. This very closely reflects the way this would be done in C.
-In `hurl` you design bodies and shapes with pure ADTs, defering the IO
-until later. Once they are added to the space they require IO to be modified,
-but it is useful to have pure representations of the original objects.
 
-### greater composability
+Instead in `hurl` you design bodies and shapes in terms of `Solid`s, pure ADTs
+that are composable and lazy. Solids have physical properties such as density
+and volume, so the user may add them to spaces without manually computing the
+mass and moment for the body. Those properties are computed lazily, so the user
+may add a Solid to a static body without incurring any unneeded computation.
 
-In `Hipmunk`, you create bodies, shapes, and constraints. You then statefully
-modify their properties, add them to a space, and define relationships between
-them. It is difficult to compose these components because most of the operations
-are done in the IO monad.
+#### greater safety
 
-In `hurl` you work in terms of the `Object f` type. An `Object f` consists of a
-`Body` and a traversable container `f` of `Solid`s. Objects can be combined
-to create new objects, which remain pure and composable until you allocate the 
-object in a `Space`. The space gives you back an immutable `ObjectRef f`, and
-functions of the user-provided `f` can be used to refer to the immutable
-`SolidRef`s that were created in the space.
+* The type system prevents the user from applying forces to static bodies. To
+move static bodies it is necessary to do so in a context that will ensure that
+the static hashes are recomputed.
 
-### functional collision handling
+* It is not possible to cause a segfault by forgetting to initialize Chipmunk.
+This is done automatically the first time a `Space` is created.
 
-`Hipmunk` exposes the Chipmunk API for registering callbacks in IO. An important
+* *TODO* It is not possible to cause a segfault by performing operations on
+a freed `Space` or `Object`.
+
+
+### planned features
+
+#### functional collision handling
+
+`Hipmunk` handles collisions by registering IO callbacks. An important
 goal of `hurl` is to hide this callback interface and instead offer primitives
 that can be used in functional reactive programming (FRP) frameworks.
