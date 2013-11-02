@@ -1,9 +1,9 @@
 ## hurl
 
-`hurl` is a Haskell high-level interface to the Chipmunk physics library in
-early development. It is implemented in terms of `Hipmunk`, an excellent but
-straightforward binding to Chipmunk. `hurl` is designed to provide a more
-idiomatic interface than `Hipmunk`.
+`hurl` is a high-level interface to the Chipmunk physics library.
+It is implemented in terms of `Hipmunk`, an excellent but straightforward
+Haskell binding to Chipmunk. `hurl` is designed to provide a more idiomatic
+interface than `Hipmunk`.
 
 ### advantages over Hipmunk
 
