@@ -1,5 +1,20 @@
 TODO
 
+- change Object to ObjectRef
+- create a new Object type to represent a collection of Solids with cached Body
+
+- maybe create a Entity class for entities that can be added to a Space:
+    class (Traversable f) => Entity f a | a -> f where
+        toObject :: a -> Object f
+
+    instance Entity f (Object f)
+    instance Entity [] Solid
+    instance Entity [] Shape
+    instance (Entity f a) => Entity f [a]
+
+    addToSpace :: (Entity f a) => Space -> a -> ObjectRef f
+
+
 Space API
     allow user to supply custom Body
     eliminate redundancies
