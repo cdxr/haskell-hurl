@@ -40,11 +40,13 @@ data Solid = Solid
 instance Show Solid where
     showsPrec d s = showParen (d > 10)
         $ showString "makeSolid "
-        . shows (solidDensity s)
+        . shows (getDensity $ solidDensity s)
         . showString " "
-        . shows (solidSurface s)
+        . showParen True
+            (shows (solidSurface s))
         . showString " "
-        . shows (solidShape s)
+        . showParen True
+            (shows (solidShape s))
 
 -- ** Constructors
 
