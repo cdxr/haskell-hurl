@@ -175,7 +175,7 @@ defaultSurface = Surface 0.5 0.5
 -- ** Types
 
 newtype Mass = Mass { getMass :: Double }
-    deriving (Num, Show, Read, Eq, Ord)
+    deriving (Num, Fractional, Show, Read, Eq, Ord)
 
 instance Monoid Mass where
     mempty = Mass 0
@@ -183,7 +183,7 @@ instance Monoid Mass where
 
 
 newtype Moment = Moment { getMoment :: Double }
-    deriving (Num, Show, Read, Eq, Ord)
+    deriving (Num, Fractional, Show, Read, Eq, Ord)
 
 instance Monoid Moment where
     mempty = Moment 0
@@ -191,11 +191,11 @@ instance Monoid Moment where
 
 
 newtype Volume = Volume { getVolume :: Double }
-    deriving (Num, Show, Read, Eq, Ord)
+    deriving (Num, Fractional, Show, Read, Eq, Ord)
 
 
 newtype Density = Density { getDensity :: Double }
-    deriving (Num, Show, Read, Eq, Ord)
+    deriving (Num, Fractional, Show, Read, Eq, Ord)
 
 
 -- ** Equations
