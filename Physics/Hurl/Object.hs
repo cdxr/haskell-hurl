@@ -8,6 +8,7 @@ module Physics.Hurl.Object
     -- ** Inspection
     viewSolids,
     viewShapes,
+    absoluteShapes,
 
     -- ** Mutable Properties
     position,
@@ -40,8 +41,6 @@ import Linear.V2
 import Control.Lens
 import Control.Applicative
 
-import Data.Functor.Identity
-
 import Data.StateVar ( StateVar, makeStateVar, get, ($=) )
 
 import qualified Physics.Hipmunk as H
@@ -56,16 +55,24 @@ import Physics.Hurl.Internal.Utils
 type Object' = Object []
 
 
--- | Output each `Solid` in the ObjectRef.
+-- | Output the `Solid`s contained in the `Object`.
 viewSolids :: (Functor f) => Object f -> IO (f Solid)
 viewSolids o = do
     p  <- get $ position o
     return $ (shape %~ moveShape p) . solidRefProto <$> objectSolids o
 
 
--- | Output each `Shape` in the ObjectRef.
+-- | Output the `Shape`s contained in the `Object`.
 viewShapes :: (Functor f) => Object f -> IO (f Shape)
 viewShapes = (fmap.fmap) (view shape) . viewSolids
+
+
+-- | Output the `Shape`s contained in the `Object`, but with each shape
+-- translated into absolute space coordinates.
+absoluteShapes :: (Functor f) => Object f -> IO (f Shape)
+absoluteShapes o = do
+    p <- get $ position o
+    fmap (moveShape p) <$> viewShapes o
 
 
 position :: Object f -> StateVar Position
