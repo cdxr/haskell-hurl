@@ -1,3 +1,9 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -7,23 +13,25 @@
 -- quickcheck properties for `hurl`
 ------------------------------------------------------------------------------
 
-module Main where
+module Main ( main ) where
 
 import Test.QuickCheck
+import Test.QuickCheck.Shrink
+
 import Test.Tasty.QuickCheck
 import Test.Tasty.TH
 
 import Control.Applicative
 import Data.Monoid
 import Data.Function
+import Data.Functor.Compose
 
 import qualified Data.Foldable as F
-import Data.Traversable ( traverse )
 
 import Data.AEq
 import Data.Fixed
 
-import Control.Lens  ( view )
+import Control.Lens hiding ( transform, elements )
 import Linear hiding ( rotate )
 
 import Physics.Hurl
@@ -47,7 +55,7 @@ arbPositive = getPositive <$> arbitrary
 
 instance (Arbitrary a) => Arbitrary (V2 a) where
     arbitrary = V2 <$> arbitrary <*> arbitrary
-    shrink (V2 x y) = tail $ V2 <$> (x : shrink x) <*> (y : shrink y)
+    shrink = runShrink $ V2 <$> shrinks (view _x) <*> shrinks (view _y)
 
 instance (AEq a) => AEq (V2 a) where
     a ~== b = F.and $ (~==) <$> a <*> b
@@ -87,6 +95,17 @@ instance Arbitrary Shape where
             a <- g
             (,) a <$> g `suchThat` (/= a)
 
+    shrink s = runShrink m s
+      where
+        m = case s of
+            Circle r p -> Circle <$> shrinkingPos r <*> shrink' p
+            Segment l a b ->
+                Segment <$> shrinkingPos l <*> shrink' a <*> shrink' b
+            s -> pure s
+        shrinkingPos :: (Num a, Ord a, Arbitrary a) => a -> Shrink r a
+        shrinkingPos = shrinksWith (filter (> 0) . shrink) . const
+        --shrinkingPos = wrapping Positive shrink'
+
 -- test the `Shape` Arbitrary instance
 prop_valid :: Shape -> Bool
 prop_valid = validShape
@@ -112,7 +131,7 @@ infix 4 ==?
 infix 4 ~==?
 
 
--- | Compare two angles for equality, measured in radians
+-- | Approx two angles for equality, measured in radians
 angleEq :: Double -> Double -> Property
 angleEq t u = mod' t tau ~==? mod' u tau
   where
@@ -228,6 +247,12 @@ instance Arbitrary Mass where
     arbitrary = Mass <$> arbPositive
     shrink    = map Mass . shrinkRealFrac . getMass
 
+instance CoArbitrary Mass where
+    coarbitrary = coarbitraryReal . getMass
+
+instance AEq Mass where
+    Mass a ~== Mass b = a ~== b
+
 instance Arbitrary Moment where
     arbitrary = Moment <$> arbPositive
     shrink    = map Moment . shrinkRealFrac . getMoment
@@ -236,20 +261,43 @@ instance Arbitrary Density where
     arbitrary = Density <$> arbPositive
     shrink    = map Density . shrinkRealFrac . getDensity
 
+instance CoArbitrary Density where
+    coarbitrary = coarbitraryReal . getDensity
+
 instance Arbitrary Surface where
     arbitrary = Surface <$> choose (0, 1) <*> choose (0, 1)
+    shrink = runShrink $
+        Surface <$> shrinks _friction <*> shrinks _elasticity
+
+instance AEq Solid where
+    a ~== b = and
+        [ a^.density ~== b^.density
+        , a^.surface ~== b^.surface
+        , a^.shape   ~== b^.shape
+        ]
+
+instance AEq Density where
+    Density a ~== Density b = a ~== b
+
+instance AEq Surface where
+    Surface f e ~== Surface f' e' = f ~== f' && e ~== e'
+
+instance AEq Shape where
+    Circle r p ~== Circle r' p' =
+        and [r ~== r', p ~== p']
+    Segment l a b ~== Segment l' a' b' =
+        and [l ~== l', a ~== a', b ~== b']
+    Poly ps ~== Poly qs =
+        and $ zipWith (~==) ps qs
+    _ ~== _ = False
+
 
 instance Arbitrary Solid where
-    arbitrary = oneof
-        [ solid <$> arbitrary
-        , makeSolid <$> arbitrary <*> arbitrary <*> arbitrary
-        , makeSolidMass <$> arbitrary <*> arbitrary <*> arbitrary
-        ]
-    shrink s = makeSolid
-        <$> shrink (view density s)
-        <*> shrink (view surface s)
-        <*> shrink (view shape s)
-
+    arbitrary = makeSolid <$> arbitrary <*> arbitrary <*> arbitrary
+    shrink = runShrink $ makeSolid
+        <$> shrinks (view density)
+        <*> shrinks (view surface)
+        <*> shrinks (view shape)
 
 -- | Verify the internal consistency of the `Solid`.
 validSolid :: Solid -> Bool
@@ -258,3 +306,105 @@ validSolid (Solid ma d v mo surf sh) = and
     , ma == mass' d v
     , mo == moment' ma sh
     ]
+
+
+data NumFun a = Plus a | Times a | Replace a
+    deriving (Show, Functor)
+
+instance (Arbitrary a) => Arbitrary (NumFun a) where
+    arbitrary = oneof $ map (<$> arbitrary) [Plus, Times, Replace]
+
+applyNumFun :: (Num a) => NumFun a -> a -> a
+applyNumFun nf = case nf of
+    Plus  x -> (+ x)
+    Times x -> (* x)
+    Replace x -> const x
+    
+
+type Approx a = (Arbitrary a, Show a, AEq a)
+
+
+isNumSetter
+    :: (Arbitrary a, CoArbitrary a, Show a, Num a, Approx s)
+    => Setter' s a -> Property
+isNumSetter l =
+    setter_id l .&.
+    num_setter_composition l .&.
+    approx_setter_set_set l
+
+isNumTraversal
+    :: (Arbitrary a, CoArbitrary a, Show a, Num a, Approx s)
+    => Traversal' s a -> Property
+isNumTraversal l =
+    isNumSetter l .&.
+    traverse_pureMaybe l .&.
+    traverse_pureList l .&.
+    do as <- arbitrary
+       bs <- arbitrary
+       t <- arbitrary
+       property $ traverse_compose l (\x -> as++[x]++bs)
+                                     (\x -> if t then Just x else Nothing)
+
+num_setter_composition
+    :: (Num a, Arbitrary a, Approx s)
+    => Setter' s a -> s -> NumFun a -> NumFun a -> Property
+num_setter_composition l s nf ng =
+    let f = applyNumFun nf
+        g = applyNumFun ng
+    in over l f (over l g s) ~==? over l (f . g) s
+
+
+isNumLens
+    :: (Show a, AEq a, Num a, Arbitrary a, CoArbitrary a, Approx s)
+    => Lens' s a -> Property
+isNumLens l =
+    approx_lens_set_view l .&.
+    approx_lens_view_set l .&.
+    isNumTraversal l
+
+
+prop_mass_lens :: Property
+prop_mass_lens = isNumLens mass
+
+prop_density_lens :: Property
+prop_density_lens = isNumLens density
+
+--prop_friction_lens
+--prop_elasticity_lens = isLens
+
+------------------------------------------------------------------------------
+-- taken from the lens package: "tests/properties.hs"
+
+
+-- The first setter law:
+setter_id :: Eq s => Setter' s a -> s -> Bool
+setter_id l s = over l id s == s
+
+approx_lens_set_view :: AEq s => Lens' s a -> s -> Bool
+approx_lens_set_view l s = set l (view l s) s ~== s
+
+approx_lens_view_set :: AEq a => Lens' s a -> s -> a -> Bool
+approx_lens_view_set l s a = view l (set l a s) ~== a
+
+approx_setter_set_set :: AEq s => Setter' s a -> s -> a -> a -> Bool
+approx_setter_set_set l s a b = set l b (set l a s) ~== set l b s
+
+prism_yin :: Eq a => Prism' s a -> a -> Bool
+prism_yin l a = preview l (review l a) == Just a
+
+prism_yang :: Eq s => Prism' s a -> s -> Bool
+prism_yang l s = maybe s (review l) (preview l s) == s
+
+traverse_pure :: forall f s a. (Applicative f, Eq (f s)) => LensLike' f s a -> s -> Bool
+traverse_pure l s = l pure s == (pure s :: f s)
+
+traverse_pureMaybe :: Eq s => LensLike' Maybe s a -> s -> Bool
+traverse_pureMaybe = traverse_pure
+
+traverse_pureList :: Eq s => LensLike' [] s a -> s -> Bool
+traverse_pureList = traverse_pure
+
+traverse_compose :: (Applicative f, Applicative g, Eq (f (g s)))
+                    => Traversal' s a -> (a -> g a) -> (a -> f a) -> s -> Bool
+traverse_compose t f g s = (fmap (t f) . t g) s == (getCompose . t (Compose . fmap f . g)) s
+
