@@ -58,9 +58,6 @@ import Physics.Hurl.Internal.Shape
 import Physics.Hurl.Internal.Utils
 
 
--- TODO: combine `createBody` and `addToSpace`
-
-
 -- | A global reference used to determine if we have called `H.initChipmunk`.
 --
 -- The first time we initialize a `Space`, we call `H.initChipmunk` and
